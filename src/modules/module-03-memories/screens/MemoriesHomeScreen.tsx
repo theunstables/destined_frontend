@@ -73,7 +73,7 @@ export function MemoriesHomeScreen() {
   const search = useCallback(() => router.push('/(app)/memories/search'), [router])
   const favorites = useCallback(() => router.push('/(app)/memories/favorites'), [router])
   const open = useCallback((id: string) => router.push(`/(app)/memories/${id}`), [router])
-  const albums = useCallback(() => router.push('/(app)/memories/albums'), [router])
+  const viewAllAlbums = useCallback(() => router.push('/(app)/memories/albums'), [router])
   const onThisDayScreen = useCallback(() => router.push('/(app)/memories/on-this-day'), [router])
   const openAlbum = useCallback(
     (key: string) => router.push(`/(app)/memories/albums/${encodeURIComponent(key)}`),
@@ -154,7 +154,7 @@ export function MemoriesHomeScreen() {
           <View style={styles.spacer} />
           {/* A compact action, not a `Button`: the button's 56pt control height
               and block width pushed "Your albums" onto two lines. */}
-          <Pressable onPress={albums} accessibilityRole="button" accessibilityLabel={COPY.home.viewAll}>
+          <Pressable onPress={viewAllAlbums} accessibilityRole="button" accessibilityLabel={COPY.home.viewAll}>
             <Text variant="captionAction" tone="link">
               {COPY.home.viewAll}
             </Text>

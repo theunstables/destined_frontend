@@ -16,8 +16,8 @@ export const BRAND = {
   /**
    * Short descriptor for the product.
    *
-   * Rendered as the headline on M00-S01 Welcome, where the design typesets it
-   * across two lines — see `@/copy/welcome`, which asserts the two stay in sync.
+  * Rendered as the supporting line on M00-S01 Welcome — see `@/copy/welcome`,
+  * which asserts that the copy stays in sync.
    */
   tagline: 'Where two stories become ours.',
 
