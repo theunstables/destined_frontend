@@ -8,7 +8,8 @@ import { BRAND } from '@/config/brand'
  * (D30) — the two read almost identically and Figma only ever drew one.
  */
 export const RELATIONSHIP_CONNECTED_COPY = {
+  eyebrow: 'Relationship Connected',
   heading: `You're officially a ${BRAND.name} couple ❤️`,
-  lede: 'Your space is ready. Everything you keep here belongs to both of you.',
-  confirm: 'Continue',
+  lede: 'Everything here belongs to both of you.',
+  confirm: 'Begin Our Story',
 } as const

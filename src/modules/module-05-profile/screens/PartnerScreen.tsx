@@ -13,6 +13,8 @@ import { Avatar } from '@/design-system/primitives/Avatar'
 import { Button } from '@/design-system/primitives/Button'
 import { CodeDisplay } from '@/design-system/primitives/CodeDisplay'
 import { Text } from '@/design-system/primitives/Text'
+import { pairingService } from '@/services/pairing'
+import { useAccountStore } from '@/state/accountStore'
 import { useRelationshipStore } from '@/state/relationshipStore'
 
 /**
@@ -23,10 +25,9 @@ import { useRelationshipStore } from '@/state/relationshipStore'
  * the worst place — it would ask someone to confirm ending something they never
  * started.
  *
- * Unlinking calls `reset()` on the relationship store, which is the same clear
- * sign-out performs. It does NOT navigate: you stay in settings, and the screen
- * re-renders into its unpaired state, which is the honest picture of what just
- * happened.
+ * Unlinking uses the server's seven-day grace period. Sharing pauses while the
+ * request is pending, either member can cancel it, and the partner identity is
+ * never cleared merely because a request was scheduled.
  *
  * SHARE AND COPY ARE M01-S05's, not new ones. The share text is
  * `INVITE_PARTNER_COPY.shareMessage` rather than a second wording of the same
@@ -44,12 +45,16 @@ export function PartnerScreen() {
   const router = useRouter()
   const partner = useRelationshipStore((state) => state.partner)
   const code = useRelationshipStore((state) => state.code)
-  const reset = useRelationshipStore((state) => state.reset)
+  const lifecycle = useAccountStore((state) => state.lifecycle)
+  const setLifecycle = useAccountStore((state) => state.setLifecycle)
 
   const goBack = useCallback(() => router.back(), [router])
   const invite = useCallback(() => router.push('/(onboarding)/invite'), [router])
 
   const [notice, setNotice] = useState<string | null>(null)
+  const [lifecycleNotice, setLifecycleNotice] = useState<string | null>(null)
+  const [lifecycleError, setLifecycleError] = useState(false)
+  const [lifecycleInFlight, setLifecycleInFlight] = useState(false)
 
   // Read once. A React Native runtime has no `navigator` global at all, so
   // every use has to be guarded; naming the fact here keeps the guard from
@@ -92,6 +97,40 @@ export function PartnerScreen() {
 
   const share = useCallback(() => void onShare(), [onShare])
   const copy = useCallback(() => void onCopy(), [onCopy])
+
+  const requestUnpair = useCallback(() => {
+    if (lifecycleInFlight) return
+    setLifecycleInFlight(true)
+    setLifecycleError(false)
+    setLifecycleNotice(null)
+    void pairingService.requestUnpair().then((result) => {
+      if (result.ok) setLifecycle(result.value)
+      else setLifecycleError(true)
+      setLifecycleInFlight(false)
+    })
+  }, [lifecycleInFlight, setLifecycle])
+
+  const cancelUnpair = useCallback(() => {
+    if (lifecycleInFlight) return
+    setLifecycleInFlight(true)
+    setLifecycleError(false)
+    setLifecycleNotice(null)
+    void pairingService.cancelUnpair().then((result) => {
+      if (result.ok) {
+        setLifecycle(result.value)
+        setLifecycleNotice(COPY.cancelUnlinkComplete)
+      } else {
+        setLifecycleError(true)
+      }
+      setLifecycleInFlight(false)
+    })
+  }, [lifecycleInFlight, setLifecycle])
+
+  const unpairDate = lifecycle?.unpairExpiresAt
+    ? new Date(lifecycle.unpairExpiresAt).toLocaleDateString(undefined, {
+        year: 'numeric', month: 'long', day: 'numeric',
+      })
+    : null
 
   return (
     <SettingsScreenLayout title={COPY.title} lede={COPY.lede} onBack={goBack}>
@@ -147,7 +186,26 @@ export function PartnerScreen() {
         </SectionPanel>
       ) : null}
 
-      {partner ? (
+      {partner && lifecycle?.unpairPending ? (
+        <SectionPanel title={COPY.dangerGroup}>
+          <Text variant="body" tone="body">
+            {lifecycle.unpairRequestedByMe
+              ? COPY.unlinkPending
+              : COPY.unlinkRequestedByPartner}
+          </Text>
+          {unpairDate ? (
+            <Text variant="footnote" tone="body">
+              {`${COPY.unlinkDatePrefix} ${unpairDate}.`}
+            </Text>
+          ) : null}
+          <Button
+            label={COPY.cancelUnlink}
+            onPress={cancelUnpair}
+            variant="outline"
+            loading={lifecycleInFlight}
+          />
+        </SectionPanel>
+      ) : partner ? (
         <SectionPanel title={COPY.dangerGroup}>
           <DangerRow
             icon="user-minus"
@@ -157,9 +215,21 @@ export function PartnerScreen() {
             confirmBody={COPY.unlinkBody}
             cancelLabel={COPY.unlinkCancel}
             confirmLabel={COPY.unlinkConfirm}
-            onConfirm={reset}
+            onConfirm={requestUnpair}
           />
         </SectionPanel>
+      ) : null}
+
+      {lifecycleError ? (
+        <Text variant="footnote" tone="error" accessibilityRole="alert">
+          {COPY.lifecycleError}
+        </Text>
+      ) : null}
+
+      {lifecycleNotice ? (
+        <Text variant="footnote" tone="success" accessibilityLiveRegion="polite">
+          {lifecycleNotice}
+        </Text>
       ) : null}
     </SettingsScreenLayout>
   )

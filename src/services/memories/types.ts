@@ -4,7 +4,7 @@
  * Mirrors `services/auth`, `pairing` and `story`: a typed interface, errors as
  * codes rather than strings, and a mock until a provider exists.
  */
-export type MemoryErrorCode = 'NOT_FOUND' | 'NETWORK' | 'UNKNOWN'
+export type MemoryErrorCode = 'CONFLICT' | 'NOT_FOUND' | 'NETWORK' | 'UNKNOWN'
 
 export type MemoryError = {
   code: MemoryErrorCode
@@ -48,6 +48,15 @@ export type NewMemory = Omit<
 /** Every field but `id` optional — an edit only sends what actually changed. */
 export type MemoryEdit = Partial<NewMemory>
 
+export type MemoryAlbum = {
+  id: string
+  key: string
+  label: string
+  emoji?: string
+  coverUri?: string
+  count: number
+}
+
 export type MemoriesService = {
   list: () => Promise<Result<Memory[]>>
   get: (input: { id: string }) => Promise<Result<Memory>>
@@ -58,4 +67,10 @@ export type MemoriesService = {
   withdrawPrivateNote: (input: { id: string }) => Promise<Result<Memory>>
   toggleFavorite: (input: { id: string }) => Promise<Result<Memory>>
   search: (input: { query: string }) => Promise<Result<Memory[]>>
+  listAlbums: () => Promise<Result<MemoryAlbum[]>>
+  createAlbum: (input: { label: string; emoji?: string; coverUri?: string }) => Promise<Result<MemoryAlbum>>
+  getAlbum: (input: { id: string }) => Promise<Result<MemoryAlbum>>
+  listAlbumMemories: (input: { albumId: string }) => Promise<Result<Memory[]>>
+  addToAlbum: (input: { albumId: string; memoryId: string }) => Promise<Result<void>>
+  removeFromAlbum: (input: { albumId: string; memoryId: string }) => Promise<Result<void>>
 }

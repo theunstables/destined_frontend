@@ -24,4 +24,5 @@ export const SETTINGS_OUR_SPACE_COPY = {
 
   save: 'Save changes',
   saved: 'Your space was updated.',
+  saveError: 'Your space could not be updated. Try again.',
 } as const

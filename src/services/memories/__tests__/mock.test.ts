@@ -96,4 +96,26 @@ describe('mock memories service', () => {
     if (!r.ok) throw new Error('expected ok')
     expect(r.value).toEqual([])
   })
+
+  it('creates albums, rejects duplicate names, and maintains membership', async () => {
+    const service = createMockMemoriesService({ latencyMs: 0, seed: SEED })
+
+    const created = await service.createAlbum({ label: 'Trips', emoji: '✈️' })
+    if (!created.ok) throw new Error('expected ok')
+
+    expect(await service.createAlbum({ label: ' trips ' })).toEqual({
+      ok: false,
+      error: { code: 'CONFLICT' },
+    })
+    expect(await service.addToAlbum({ albumId: created.value.id, memoryId: 'memory-1' }))
+      .toEqual({ ok: true, value: undefined })
+
+    const album = await service.getAlbum({ id: created.value.id })
+    if (!album.ok) throw new Error('expected ok')
+    expect(album.value.count).toBe(1)
+
+    const memories = await service.listAlbumMemories({ albumId: created.value.id })
+    if (!memories.ok) throw new Error('expected ok')
+    expect(memories.value.map((memory) => memory.id)).toEqual(['memory-1'])
+  })
 })

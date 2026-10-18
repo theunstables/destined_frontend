@@ -17,6 +17,7 @@
 export const SETTINGS_MEMORIES_COPY = {
   title: 'Memories & Story',
   lede: 'What comes back to you, and when.',
+  unavailable: 'Memory automation preferences are not available in this build yet.',
 
   resurfaceGroup: 'On This Day',
   onThisDay: 'Show On This Day',

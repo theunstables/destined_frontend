@@ -1,6 +1,6 @@
 import { Image } from 'expo-image'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -12,7 +12,11 @@ import { Text } from '@/design-system/primitives/Text'
 import { PhotoMemoryCard } from '@/modules/module-03-memories/components/PhotoMemoryCard'
 import { SAMPLE_HOME } from '@/sample/home'
 import { findAlbum, memoriesInAlbum } from '@/sample/albums'
+import type { Album } from '@/sample/albums'
 import { USE_SAMPLE_CONTENT } from '@/sample'
+import { memoriesService } from '@/services/memories'
+import type { Memory, MemoryAlbum } from '@/services/memories/types'
+import { useRelationshipStore } from '@/state/relationshipStore'
 
 /**
  * M03-S06 — Album Detail. Figma `Ziyu`, Memories Page frame 3 ("Trips ✈️").
@@ -28,34 +32,78 @@ export function AlbumDetailScreen() {
   const router = useRouter()
   const back = useBackTo('/(app)/memories')
   const { key } = useLocalSearchParams<{ key: string }>()
-  /*
-   * Gated with the list screen. With the sample switch off there are no album
-   * cards to tap, but the route is still a URL — and this app ships a web
-   * build. A deep link would otherwise have rendered an invented album to a
-   * couple whose app is meant to be empty. `missing` is the honest answer.
-   */
-  const album = USE_SAMPLE_CONTENT ? findAlbum(decodeURIComponent(key ?? '')) : undefined
+  const profileName = useRelationshipStore((state) => state.profile?.name)
+  const partnerName = useRelationshipStore((state) => state.partner?.name)
+  const [album, setAlbum] = useState<Album | MemoryAlbum | null>(null)
+  const [memories, setMemories] = useState<Memory[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [removeError, setRemoveError] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    const id = decodeURIComponent(key ?? '')
+    void Promise.all([memoriesService.getAlbum({ id }), memoriesService.listAlbumMemories({ albumId: id })])
+      .then(([albumResult, memoriesResult]) => {
+        if (!active) return
+        if (albumResult.ok && memoriesResult.ok) {
+          setAlbum(albumResult.value)
+          setMemories(memoriesResult.value)
+        } else if (USE_SAMPLE_CONTENT) {
+          const sample = findAlbum(id)
+          if (sample) {
+            setAlbum(sample)
+            setMemories(memoriesInAlbum(sample))
+          } else {
+            setError(COPY.detail.missing)
+          }
+        } else {
+          setError(albumResult.ok ? COPY.detail.loadError : COPY.detail.missing)
+        }
+        setLoaded(true)
+      })
+    return () => { active = false }
+  }, [key])
 
   const open = useCallback((id: string) => router.push(`/(app)/memories/${id}`), [router])
+
+  const remove = useCallback((memoryId: string) => {
+    if (!album || !('id' in album)) return
+    setRemoveError(false)
+    void memoriesService.removeFromAlbum({ albumId: album.id, memoryId }).then((result) => {
+      if (!result.ok) {
+        setRemoveError(true)
+        return
+      }
+      setMemories((current) => current.filter((memory) => memory.id !== memoryId))
+      setAlbum((current) => current && 'id' in current
+        ? { ...current, count: Math.max(0, current.count - 1) }
+        : current)
+    })
+  }, [album])
+
+  if (!loaded) return <AppScreenLayout activeTab="memories" onBack={back} />
 
   if (!album) {
     return (
       <AppScreenLayout activeTab="memories" onBack={back}>
         <Text variant="body" tone="body">
-          {COPY.detail.missing}
+          {error ?? COPY.detail.missing}
         </Text>
         <Button label={COPY.detail.back} onPress={back} variant="outline" />
       </AppScreenLayout>
     )
   }
 
-  const memories = memoriesInAlbum(album)
+  const count = 'count' in album ? album.count : album.sampleCount
+  const heroUri = 'heroUri' in album ? album.heroUri : album.coverUri
+  const coupleName = [profileName, partnerName].filter(Boolean).join(' & ') || SAMPLE_HOME.coupleName
 
   return (
     <AppScreenLayout activeTab="memories" onBack={back}>
       <View style={styles.hero}>
         <Image
-          source={{ uri: album.heroUri }}
+          source={heroUri ? { uri: heroUri } : undefined}
           // Plain style object — Unistyles styles do not reach expo-image.
           style={{
             position: 'absolute',
@@ -66,7 +114,7 @@ export function AlbumDetailScreen() {
             backgroundColor: theme.colors.surface.soft,
           }}
           contentFit="cover"
-          contentPosition={album.heroContentPosition ?? 'center'}
+          contentPosition={'heroContentPosition' in album ? album.heroContentPosition ?? 'center' : 'center'}
           transition={200}
           testID={`album-hero-${album.key}`}
         />
@@ -76,7 +124,7 @@ export function AlbumDetailScreen() {
             {album.label} {album.emoji}
           </Text>
           <Text variant="caption" tone="onPrimary">
-            {COPY.detail.subtitle(album.sampleCount, SAMPLE_HOME.coupleName)}
+            {COPY.detail.subtitle(count, coupleName)}
           </Text>
         </View>
       </View>
@@ -88,10 +136,25 @@ export function AlbumDetailScreen() {
       ) : (
         <View style={styles.feed}>
           {memories.map((memory) => (
-            <PhotoMemoryCard key={memory.id} memory={memory} onPress={open} />
+            <View key={memory.id} style={styles.memory}>
+              <PhotoMemoryCard memory={memory} onPress={open} />
+              {'id' in album ? (
+                <Button
+                  label={COPY.detail.remove}
+                  onPress={() => remove(memory.id)}
+                  variant="outline"
+                />
+              ) : null}
+            </View>
           ))}
         </View>
       )}
+
+      {removeError ? (
+        <Text variant="footnote" tone="error" accessibilityRole="alert">
+          {COPY.detail.removeError}
+        </Text>
+      ) : null}
     </AppScreenLayout>
   )
 }
@@ -114,5 +177,8 @@ const styles = StyleSheet.create((theme) => ({
   },
   feed: {
     gap: theme.spacing.lg,
+  },
+  memory: {
+    gap: theme.spacing.sm,
   },
 }))

@@ -12,8 +12,9 @@ import { SettingsScreenLayout } from '@/design-system/patterns/SettingsScreenLay
 import { Button } from '@/design-system/primitives/Button'
 import { Input } from '@/design-system/primitives/Input'
 import { Text } from '@/design-system/primitives/Text'
+import { feedbackService, type FeedbackTopic } from '@/services/feedback'
 
-type Topic = 'problem' | 'idea' | 'other'
+type Topic = FeedbackTopic
 
 const TOPIC_SEGMENTS: { value: Topic; label: string }[] = [
   { value: 'problem', label: COPY.problem },
@@ -50,15 +51,24 @@ type FormValues = z.infer<typeof schema>
 export function FeedbackScreen() {
   const router = useRouter()
   const [topic, setTopic] = useState<Topic>('problem')
-  const [isSubmitted, setIsSubmitted] = useState(false)
 
-  const { control, handleSubmit } = useForm<FormValues>({
+  const [submission, setSubmission] = useState<'idle' | 'sent' | 'error'>('idle')
+  const { control, handleSubmit, formState, reset } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { message: '' },
   })
 
   const goBack = useCallback(() => router.back(), [router])
-  const onSubmit = useCallback(() => setIsSubmitted(true), [])
+  const submit = handleSubmit(async ({ message }) => {
+    setSubmission('idle')
+    try {
+      await feedbackService.submit({ topic, message: message.trim() })
+      reset()
+      setSubmission('sent')
+    } catch {
+      setSubmission('error')
+    }
+  })
 
   return (
     <SettingsScreenLayout title={COPY.title} lede={COPY.lede} onBack={goBack}>
@@ -93,12 +103,12 @@ export function FeedbackScreen() {
         <SettingsRow icon="image" label={COPY.attachLabel} detail={COPY.attachDetail} />
       </SectionPanel>
 
-      <Button label={COPY.send} onPress={handleSubmit(onSubmit)} />
+      <Button label={COPY.send} onPress={submit} loading={formState.isSubmitting} />
 
-      {isSubmitted ? (
-        <Text variant="footnote" tone="body">
-          {COPY.notSent}
-        </Text>
+      {submission === 'sent' ? (
+        <Text variant="footnote" tone="success">Feedback received. Thank you.</Text>
+      ) : submission === 'error' ? (
+        <Text variant="footnote" tone="error">Feedback could not be sent. Try again.</Text>
       ) : null}
 
       <SectionPanel title={COPY.rateGroup}>

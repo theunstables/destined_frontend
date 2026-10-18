@@ -77,12 +77,16 @@ export const PLANS_COPY = {
       title: 'Watch Together',
       lede: 'Side by side cinema queue.',
       status: (title: string) => `Next: ${title}`,
+      liveStatus: 'Live sync ready',
+      liveDetail: 'Open a room to connect',
     },
     places: {
       chip: 'Shared Map',
       title: 'Shared Places',
       lede: "Where we've been & dreamt of.",
       status: (count: number) => `${count} pinned spots`,
+      liveStatus: 'Private live sharing',
+      liveDetail: 'Current locations only',
     },
   },
 

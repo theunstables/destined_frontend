@@ -20,8 +20,11 @@ describe('OurStoryBeginsScreen', () => {
   it('renders its blocks from copy', async () => {
     await renderScreen(<OurStoryBeginsScreen />)
 
+    expect(screen.getByText(COPY.eyebrow)).toBeTruthy()
     expect(screen.getByText(COPY.heading)).toBeTruthy()
     expect(screen.getByText(COPY.lede)).toBeTruthy()
+    expect(screen.getByRole('image', { name: 'Your shared world' })).toBeTruthy()
+    expect(screen.getByRole('progressbar', { name: 'Story step 1 of 7' })).toBeTruthy()
   })
 
   it('offers both exits', async () => {

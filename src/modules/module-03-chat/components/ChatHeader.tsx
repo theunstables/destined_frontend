@@ -7,9 +7,12 @@ import { Avatar } from '@/design-system/primitives/Avatar'
 import { Text } from '@/design-system/primitives/Text'
 
 type Props = {
+  partnerName?: string
   onBack: () => void
-  onVideoCall: () => void
-  onVoiceCall: () => void
+  /** Omit until a real call provider is configured; the control renders disabled. */
+  onVideoCall?: () => void
+  /** Omit until a real call provider is configured; the control renders disabled. */
+  onVoiceCall?: () => void
   /**
    * Reserved — see the control below. Optional so a caller can omit it;
    * omitting it (rather than a no-op) renders the control `disabled`, the
@@ -34,10 +37,8 @@ type Props = {
  * unreachable dead routes. The two call controls ARE the entry points to
  * those screens: pressing either is this app's only route into a Moment.
  *
- * "Sweatcha" is hardcoded, matching `Composer`'s own "Message Sweatcha…"
- * placeholder — this app has exactly one partner and no store yet exposes
- * their identity. That would move onto a partner profile the moment one
- * exists. The presence line underneath it is no longer a second hardcode:
+ * The partner identity comes from the pairing state through a prop, with the
+ * mock persona retained only as the default. The presence line underneath it
  * it swaps between `CHAT_COPY.conversation.presenceOnline` and
  * `.presenceTyping` on `isPartnerTyping`, the one piece of live presence
  * this store already tracks (see the prop's own comment above).
@@ -47,7 +48,14 @@ type Props = {
  * difference back with `hitSlop`, and the name is the one flexible column, so
  * it truncates instead of shoving a call button off the edge.
  */
-export function ChatHeader({ onBack, onVideoCall, onVoiceCall, onMore, isPartnerTyping = false }: Props) {
+export function ChatHeader({
+  partnerName = CHAT_COPY.home.defaultPartnerName,
+  onBack,
+  onVideoCall,
+  onVoiceCall,
+  onMore,
+  isPartnerTyping = false,
+}: Props) {
   return (
     <View style={styles.bar}>
       <IconButton icon="arrow-left" label="Back" onPress={onBack} size="sm" tone="plain" hitSlop={HIT} />
@@ -56,12 +64,12 @@ export function ChatHeader({ onBack, onVideoCall, onVoiceCall, onMore, isPartner
           coloured tile — it separates the initial from the bar behind it at
           any theme, without needing a photo to be there yet. */}
       <View style={styles.avatarRing}>
-        <Avatar name="Sweatcha" size={36} />
+        <Avatar name={partnerName} size={36} />
       </View>
 
       <View style={styles.identity}>
         <Text variant="labelStrong" tone="heading" numberOfLines={1}>
-          Sweatcha
+          {partnerName}
         </Text>
         <View style={styles.presence}>
           <View style={styles.presenceDot} />
@@ -133,7 +141,7 @@ const styles = StyleSheet.create((theme) => ({
     backgroundColor: theme.colors.surface.card,
   },
   // The only flexed slot — it is what pushes the trailing controls to the far
-  // edge regardless of how wide "Sweatcha" / the presence line render, and
+  // edge regardless of how wide the partner name / presence line render, and
   // what makes a longer name truncate rather than crowd them.
   identity: { flex: 1 },
   presence: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },

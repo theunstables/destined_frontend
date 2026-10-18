@@ -14,8 +14,11 @@ export const SETTINGS_SECURITY_COPY = {
   changePasswordDetail: 'You will need your current one.',
   twoFactor: 'Two-factor authentication',
   twoFactorDetail: 'A code from your phone as well as your password.',
+  unavailable: 'Not available in this build.',
 
   sessionsGroup: 'Signed in',
+  sessionsUnavailable:
+    'This device is signed in. Viewing or ending other sessions is not available yet.',
   thisDevice: 'This device',
   lastActivePrefix: 'Last active',
 

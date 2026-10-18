@@ -7,7 +7,8 @@ import { BRAND } from '@/config/brand'
  * asking for anything more.
  */
 export const READY_TO_COME_HOME_COPY = {
+  eyebrow: 'Ready to Come Home',
   heading: 'Your story has a home now.',
-  lede: `${BRAND.name} will keep the little things, the important things, and everything in between.`,
-  submit: 'Welcome Home',
+  lede: `The little things and everything in between have a place in ${BRAND.name}.`,
+  submit: 'Come Home',
 } as const

@@ -6,8 +6,9 @@
  * typed in place rather than behind a picker the app does not have.
  */
 export const DAYS_THAT_MATTER_COPY = {
-  heading: 'Birthdays belong here too.',
-  lede: "We'll remember them with you.",
+  eyebrow: 'Days That Matter',
+  heading: 'Days that belong to both of you.',
+  lede: "We'll remember the meaningful ones.",
   fields: [
     { key: 'anniversary' as const, label: 'Anniversary' },
     { key: 'yourBirthday' as const, label: 'Your Birthday' },

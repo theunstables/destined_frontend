@@ -9,6 +9,8 @@ import {
 } from 'react-native-reanimated'
 import { useUnistyles } from 'react-native-unistyles'
 
+import { usePreferencesStore } from '@/state/preferencesStore'
+
 /**
  * The entering/exiting animations this app uses, built from `theme.motion`.
  *
@@ -41,6 +43,8 @@ import { useUnistyles } from 'react-native-unistyles'
 export function useEntrance() {
   const { theme } = useUnistyles()
   const { duration, curve } = theme.motion
+  const reduceMotion = usePreferencesStore((state) => state.reduceMotion)
+  const motionPreference = reduceMotion ? ReduceMotion.Always : ReduceMotion.System
 
   // Built here rather than stored in tokens: `Easing.bezier` returns a
   // function, and the token tree has to stay plain data — see the header note
@@ -50,19 +54,19 @@ export function useEntrance() {
 
   return {
     /** Content that simply becomes present — a banner, a badge. */
-    fade: FadeIn.duration(duration.base).easing(decelerate).reduceMotion(ReduceMotion.System),
-    fadeOut: FadeOut.duration(duration.fast).easing(accelerate).reduceMotion(ReduceMotion.System),
+    fade: FadeIn.duration(duration.base).easing(decelerate).reduceMotion(motionPreference),
+    fadeOut: FadeOut.duration(duration.fast).easing(accelerate).reduceMotion(motionPreference),
     /**
      * Content that arrives from just below where it lands — a context menu, a
      * reply strip. The short travel is the point: it reads as the element
      * settling into place, not flying in.
      */
-    rise: FadeInDown.duration(duration.base).easing(decelerate).reduceMotion(ReduceMotion.System),
+    rise: FadeInDown.duration(duration.base).easing(decelerate).reduceMotion(motionPreference),
     /**
      * A bottom sheet. `slow`, and a full slide rather than a fade — the whole
      * surface is moving and its weight is the message.
      */
-    sheetIn: SlideInDown.duration(duration.slow).easing(decelerate).reduceMotion(ReduceMotion.System),
-    sheetOut: SlideOutDown.duration(duration.base).easing(accelerate).reduceMotion(ReduceMotion.System),
+    sheetIn: SlideInDown.duration(duration.slow).easing(decelerate).reduceMotion(motionPreference),
+    sheetOut: SlideOutDown.duration(duration.base).easing(accelerate).reduceMotion(motionPreference),
   }
 }

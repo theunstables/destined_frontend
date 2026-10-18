@@ -71,12 +71,16 @@ export const SETTINGS_DELETE_COPY = {
 
   finalTitle: 'Delete your account?',
   finalBody:
-    'Everything listed at the start of this is erased now, for you and for your partner. This cannot be undone.',
+    'Deletion will be scheduled for 30 days from now. You can cancel before that date by signing back in.',
   finalCancel: 'Keep my account',
-  finalConfirm: 'Delete everything',
+  finalConfirm: 'Schedule deletion',
 
-  doneHeading: 'Your account is gone.',
-  doneLede: 'Thank you for the time you spent here.',
+  doneHeading: 'Deletion is scheduled',
+  doneLede: (date: string) => `Your account is scheduled for deletion on ${date}. You can cancel until then.`,
+  cancelDeletion: 'Cancel Deletion',
+  cancellationComplete: 'Deletion cancelled. Your account will stay open.',
+  requestError: 'Deletion could not be scheduled. Try again.',
+  cancelError: 'Deletion could not be cancelled. Try again.',
 
   stepPrefix: 'Step',
   stepOf: 'of',

@@ -36,6 +36,7 @@ describe('SignInScreen', () => {
   it('renders every block from copy', async () => {
     await renderScreen(<SignInScreen />)
 
+    expect(screen.getByText(COPY.eyebrow)).toBeTruthy()
     expect(screen.getByText(COPY.heading)).toBeTruthy()
     expect(screen.getByText(COPY.lede)).toBeTruthy()
     expect(screen.getByLabelText(COPY.emailLabel)).toBeTruthy()
@@ -96,12 +97,18 @@ describe('SignInScreen', () => {
     expect(useSessionStore.getState().session?.emailVerified).toBe(true)
   })
 
-  it('shows a form-level error on bad credentials and clears only the password', async () => {
+  it('shows an inline password error on bad credentials and clears only the password', async () => {
     await renderScreen(<SignInScreen />)
 
     await fillAndSubmit('wrong@example.com', 'hunter2!')
 
     expect(await screen.findByText(AUTH_ERROR_COPY.INVALID_CREDENTIALS)).toBeTruthy()
+    expect(screen.getByText(COPY.errorCardTitle)).toBeTruthy()
+    expect(screen.getByText(COPY.errorCardBody)).toBeTruthy()
+    expect(screen.getByRole('alert')).toHaveTextContent(AUTH_ERROR_COPY.INVALID_CREDENTIALS)
+    expect(screen.getByLabelText(COPY.passwordLabel).props.accessibilityHint).toBe(
+      AUTH_ERROR_COPY.INVALID_CREDENTIALS,
+    )
     // Retyping a correct email is pure friction.
     expect(screen.getByLabelText(COPY.emailLabel).props.value).toBe('wrong@example.com')
     expect(screen.getByLabelText(COPY.passwordLabel).props.value).toBe('')
@@ -114,6 +121,7 @@ describe('SignInScreen', () => {
     await fillAndSubmit('offline@example.com', 'hunter2!')
 
     expect(await screen.findByText(AUTH_ERROR_COPY.NETWORK)).toBeTruthy()
+    expect(screen.getByRole('alert')).toHaveTextContent(AUTH_ERROR_COPY.NETWORK)
   })
 
   it('navigates to forgot-password', async () => {

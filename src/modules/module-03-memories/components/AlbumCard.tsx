@@ -5,9 +5,10 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { ALBUMS_COPY as COPY } from '@/copy/albums'
 import { Text } from '@/design-system/primitives/Text'
 import type { Album } from '@/sample/albums'
+import type { MemoryAlbum } from '@/services/memories/types'
 
 type AlbumCardProps = {
-  album: Album
+  album: Album | MemoryAlbum
   onPress: (key: string) => void
   /** `grid` is the two-up cell on "Your albums"; `rail` is the home row. */
   layout?: 'grid' | 'rail'
@@ -22,18 +23,20 @@ type AlbumCardProps = {
  */
 export function AlbumCard({ album, onPress, layout = 'grid' }: AlbumCardProps) {
   const { theme } = useUnistyles()
+  const count = 'count' in album ? album.count : album.sampleCount
+  const routeKey = 'id' in album ? album.id : album.key
 
   styles.useVariants({ layout })
 
   return (
     <Pressable
-      onPress={() => onPress(album.key)}
+      onPress={() => onPress(routeKey)}
       accessibilityRole="button"
-      accessibilityLabel={`${album.label}, ${COPY.list.count(album.sampleCount)}`}
+      accessibilityLabel={`${album.label}, ${COPY.list.count(count)}`}
       style={styles.cell}
     >
       <Image
-        source={{ uri: album.coverUri }}
+        source={album.coverUri ? { uri: album.coverUri } : undefined}
         // Plain style object — Unistyles styles do not reach expo-image.
         style={{
           width: '100%',
@@ -51,7 +54,7 @@ export function AlbumCard({ album, onPress, layout = 'grid' }: AlbumCardProps) {
           {album.label} {album.emoji}
         </Text>
         <Text variant="caption" tone="body">
-          {COPY.list.count(album.sampleCount)}
+          {COPY.list.count(count)}
         </Text>
       </View>
     </Pressable>

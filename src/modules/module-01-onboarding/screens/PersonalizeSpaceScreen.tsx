@@ -7,10 +7,10 @@ import { useBackTo } from '@/hooks/useBackTo'
 import { PERSONALIZE_SPACE_COPY as COPY } from '@/copy/personalizeSpace'
 import { Button } from '@/design-system/primitives/Button'
 import { Input } from '@/design-system/primitives/Input'
-import { SegmentedControl } from '@/design-system/primitives/SegmentedControl'
 import { Text } from '@/design-system/primitives/Text'
-import { CoverPreview } from '@/design-system/patterns/CoverPreview'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
+import { CoverStylePicker } from '@/modules/module-01-onboarding/components/CoverStylePicker'
 import { useSpaceStore, type CoverStyle } from '@/state/spaceStore'
 
 /**
@@ -46,6 +46,7 @@ export function PersonalizeSpaceScreen() {
   return (
     <AuthScreenLayout onBack={back}>
       <View style={styles.copy}>
+        <AuthEyebrow align="center">{COPY.eyebrow}</AuthEyebrow>
         <Text variant="h1" tone="heading" align="center">
           {COPY.heading}
         </Text>
@@ -75,23 +76,11 @@ export function PersonalizeSpaceScreen() {
           autoCapitalize="characters"
         />
 
-        <SegmentedControl
+        <CoverStylePicker
           label={COPY.styleLabel}
-          segments={[...COPY.styles]}
+          options={COPY.styles}
           value={coverStyle}
           onChange={setCoverStyle}
-        />
-
-        {/*
-          The segmented control alone changes only itself — tapping "Dusk"
-          moves a highlight and nothing else, which reads as broken even
-          though the selection is working. This is what the choice actually
-          does: the space's cover, shown immediately rather than only after
-          `submit` writes it to `spaceStore`.
-        */}
-        <CoverPreview
-          coverStyle={coverStyle}
-          label={COPY.styles.find((s) => s.value === coverStyle)?.label ?? ''}
         />
 
         <Button label={COPY.submit} onPress={submit} />
@@ -103,7 +92,7 @@ export function PersonalizeSpaceScreen() {
 
 const styles = StyleSheet.create((theme) => ({
   copy: {
-    gap: theme.spacing.xs,
+    gap: theme.spacing.sm,
     paddingBottom: theme.spacing.huge,
   },
   form: {

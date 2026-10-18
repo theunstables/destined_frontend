@@ -49,4 +49,6 @@ export const SETTINGS_NOTIFICATIONS_COPY = {
   soundGroup: 'Sound & vibration',
   sound: 'Sound',
   vibration: 'Vibration',
+
+  saveError: 'That notification preference could not be saved. Try again.',
 } as const

@@ -2,24 +2,36 @@ import { screen, userEvent } from '@testing-library/react-native'
 
 import { OCCASION_COPY as COPY } from '@/copy/occasion'
 import { OccasionScreen } from '@/modules/module-02-home/screens/OccasionScreen'
+import { calendarService } from '@/services/calendar'
 import { SAMPLE_HOME } from '@/sample/home'
+import { useCalendarStore } from '@/state/calendarStore'
 import { useStoryStore } from '@/state/storyStore'
 import { renderScreen } from '@/test/renderScreen'
 
 const mockPush = jest.fn()
+const mockReplace = jest.fn()
 const mockBack = jest.fn()
 let mockKey = 'partnerBirthday'
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ canGoBack: () => true, push: mockPush, replace: jest.fn(), back: mockBack }),
+  useRouter: () => ({ canGoBack: () => true, push: mockPush, replace: mockReplace, back: mockBack }),
   useLocalSearchParams: () => ({ key: mockKey }),
 }))
+
+jest.mock('@/services/calendar', () => ({
+  calendarService: { remove: jest.fn() },
+}))
+
+const service = jest.mocked(calendarService)
 
 beforeEach(() => {
   mockPush.mockClear()
   mockBack.mockClear()
+  mockReplace.mockClear()
   mockKey = 'partnerBirthday'
   useStoryStore.getState().reset()
+  useCalendarStore.getState().hydrate([])
+  service.remove.mockResolvedValue({ ok: true, value: undefined })
 })
 
 /**
@@ -86,5 +98,51 @@ describe('Occasion screen', () => {
 
     await user.press(screen.getByRole('button', { name: COPY.calendar }))
     expect(mockPush).toHaveBeenCalledWith('/(app)/calendar')
+  })
+
+  it('renders details from a provider-backed calendar event', async () => {
+    mockKey = 'calendar-event-1'
+    useCalendarStore.getState().hydrate([{
+      id: mockKey,
+      title: 'Dinner reservation',
+      date: '2027-04-10',
+      location: 'Our favorite place',
+      notes: 'Window table',
+      kind: 'dateNight',
+      repeatsAnnually: true,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    }])
+
+    await renderScreen(<OccasionScreen />)
+
+    expect(screen.getByText('Dinner reservation')).toBeTruthy()
+    expect(screen.getByText('Our favorite place')).toBeTruthy()
+    expect(screen.getByText('Window table')).toBeTruthy()
+    expect(screen.getByTestId('occasion-illustration')).toBeTruthy()
+  })
+
+  it('edits and confirms deletion of a provider-backed event', async () => {
+    mockKey = 'calendar-event-1'
+    useCalendarStore.getState().hydrate([{
+      id: mockKey,
+      title: 'Dinner reservation',
+      date: '2027-04-10',
+      kind: 'dateNight',
+      repeatsAnnually: false,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    }])
+    const user = userEvent.setup()
+    await renderScreen(<OccasionScreen />)
+
+    await user.press(screen.getByRole('button', { name: COPY.edit }))
+    expect(mockPush).toHaveBeenCalledWith('/(app)/calendar-events/calendar-event-1/edit')
+
+    await user.press(screen.getByRole('button', { name: COPY.delete }))
+    expect(service.remove).not.toHaveBeenCalled()
+    await user.press(screen.getByRole('button', { name: COPY.deleteConfirm.confirm }))
+
+    expect(service.remove).toHaveBeenCalledWith({ id: mockKey })
+    expect(useCalendarStore.getState().events).toEqual([])
+    expect(mockReplace).toHaveBeenCalledWith('/(app)/calendar')
   })
 })

@@ -5,6 +5,7 @@
  * invite and has no parent screen to sit over.
  */
 export const PARTNER_FOUND_COPY = {
+  eyebrow: 'Partner Found',
   heading: 'We found your person. ❤️',
   lede: (name: string) => `${name} is waiting to share their space with you.`,
   confirm: 'Continue',

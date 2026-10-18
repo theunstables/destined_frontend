@@ -161,13 +161,14 @@ export function CapsulesScreen() {
 }
 
 function CapsuleRow({ capsule }: { capsule: Capsule }) {
+  const router = useRouter()
   const { theme } = useUnistyles()
 
   const items = Object.values(capsule.contents).reduce((sum, n) => sum + n, 0)
 
   return (
     <PressableScale
-      onPress={() => {}}
+      onPress={() => router.push(`/(app)/plans/capsules/${capsule.id}`)}
       accessibilityLabel={`${capsule.title}. ${CAPSULES_COPY.opensIn(shortDate(capsule.opensAt))}`}
     >
       <View style={styles.row}>

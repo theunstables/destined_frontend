@@ -20,6 +20,10 @@ export type MediaErrorCode =
   | 'PERMISSION_DENIED'
   /** No camera or library on this platform — the web build, typically. */
   | 'UNAVAILABLE'
+  /** The selected file exceeds the API's 25 MB upload limit. */
+  | 'TOO_LARGE'
+  /** The picker reported a media type the API does not accept. */
+  | 'UNSUPPORTED_TYPE'
   | 'UNKNOWN'
 
 export type MediaError = {
@@ -33,6 +37,9 @@ export type PickedPhoto = {
   uri: string
   width: number
   height: number
+  /** Bytes and MIME type, when the platform reports them. */
+  fileSize?: number
+  mimeType?: string
 }
 
 export type PickedVideo = {
@@ -40,6 +47,9 @@ export type PickedVideo = {
   uri: string
   /** Milliseconds, when the picker reports one. */
   durationMs?: number
+  /** Bytes and MIME type, when the platform reports them. */
+  fileSize?: number
+  mimeType?: string
 }
 
 export type PickOptions = {

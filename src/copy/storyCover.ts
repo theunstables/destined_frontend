@@ -5,8 +5,9 @@
  * next five screens will ask for.
  */
 export const STORY_COVER_COPY = {
+  eyebrow: 'Story Cover',
   heading: 'Our Story',
-  lede: 'A story worth remembering.',
-  begin: 'Begin Our Story',
+  lede: 'A thousand little moments, one beautiful story.',
+  begin: 'Start with the Beginning',
   skip: 'Skip for now',
 } as const

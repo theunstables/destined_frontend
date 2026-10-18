@@ -9,8 +9,8 @@ type MemoriesState = {
   hydrate: (memories: Memory[]) => void
   add: (memory: Memory) => void
   replace: (memory: Memory) => void
-  updatePrivateNote: (id: string, note: string) => Promise<boolean>
-  withdrawPrivateNote: (id: string) => Promise<boolean>
+  updatePrivateNote: (id: string, note: string) => Promise<Memory | null>
+  withdrawPrivateNote: (id: string) => Promise<Memory | null>
   remove: (id: string) => void
   reset: () => void
 }
@@ -27,19 +27,19 @@ export const useMemoriesStore = create<MemoriesState>((set) => ({
     })),
   updatePrivateNote: async (id, note) => {
     const result = await memoriesService.updatePrivateNote({ id, note })
-    if (!result.ok) return false
+    if (!result.ok) return null
     set((state) => ({
       memories: state.memories.map((item) => (item.id === id ? result.value : item)),
     }))
-    return true
+    return result.value
   },
   withdrawPrivateNote: async (id) => {
     const result = await memoriesService.withdrawPrivateNote({ id })
-    if (!result.ok) return false
+    if (!result.ok) return null
     set((state) => ({
       memories: state.memories.map((item) => (item.id === id ? result.value : item)),
     }))
-    return true
+    return result.value
   },
   remove: (id) =>
     set((state) => ({ memories: state.memories.filter((memory) => memory.id !== id) })),

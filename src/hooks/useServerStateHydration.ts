@@ -23,6 +23,8 @@ import { useCalendarStore } from '@/state/calendarStore'
 import { useDailyQuestionStore } from '@/state/dailyQuestionStore'
 import { useHomeStore } from '@/state/homeStore'
 import { useNotificationStore } from '@/state/notificationStore'
+import { usePreferencesStore } from '@/state/preferencesStore'
+import { usePlansStore } from '@/state/plansStore'
 import { useRelationshipStore } from '@/state/relationshipStore'
 import { useRepairSignalStore } from '@/state/repairSignalStore'
 import { useMemoriesStore } from '@/state/memoriesStore'
@@ -42,6 +44,8 @@ export function useServerStateHydration() {
   const hydrateHome = useHomeStore((state) => state.hydrate)
   const hydrateAccount = useAccountStore((state) => state.hydrate)
   const hydrateNotifications = useNotificationStore((state) => state.hydrate)
+  const hydratePreferences = usePreferencesStore((state) => state.hydrate)
+  const hydratePlans = usePlansStore((state) => state.hydrate)
   const hydrateRepairSignal = useRepairSignalStore((state) => state.hydrate)
   const hydrateTimeline = useTimelineStore((state) => state.hydrate)
   const retryKey = useAppBootstrapStore((state) => state.retryKey)
@@ -64,6 +68,8 @@ export function useServerStateHydration() {
         useHomeStore.getState().reset()
         useAccountStore.getState().reset()
         useNotificationStore.getState().reset()
+        usePreferencesStore.getState().reset()
+        usePlansStore.getState().reset()
         useRepairSignalStore.getState().reset()
         useTimelineStore.getState().reset()
         useAppBootstrapStore.getState().resolveUnauthenticated()
@@ -108,6 +114,9 @@ export function useServerStateHydration() {
         return
       }
 
+      await hydratePreferences()
+      if (!active) return
+
       if (isMockMode) {
         const relationship = useRelationshipStore.getState()
         const localSpace = useSpaceStore.getState()
@@ -134,6 +143,8 @@ export function useServerStateHydration() {
       bootstrap.resolveReady(session, space.value)
 
       if (!space.value.coupleId) return
+      await hydratePlans()
+      if (!active) return
       const story = await storyService.getStory()
       if (active && story.ok) hydrateStory(story.value)
 
@@ -167,6 +178,7 @@ export function useServerStateHydration() {
     }
   }, [
     hydrateAccount, hydrateCalendar, hydrateDailyQuestion, hydrateHome, hydrateMemories, hydrateNotifications,
-    hydrateRepairSignal, hydrateStory, hydrateTimeline, retryKey, syncRelationship, syncSpace,
+    hydratePlans, hydratePreferences, hydrateRepairSignal, hydrateStory, hydrateTimeline, retryKey,
+    syncRelationship, syncSpace,
   ])
 }

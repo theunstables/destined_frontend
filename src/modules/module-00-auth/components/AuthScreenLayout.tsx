@@ -34,7 +34,7 @@ export function AuthScreenLayout({ onBack, centred = false, children }: AuthScre
       <ThemedStatusBar />
 
       <View style={{ paddingTop: insets.top }}>
-        <AppHeader onBack={onBack} />
+        <AppHeader onBack={onBack} floating />
       </View>
 
       <View style={styles.flex}>
@@ -60,6 +60,7 @@ export function AuthScreenLayout({ onBack, centred = false, children }: AuthScre
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <ScrollView
+            testID="auth-screen-scroll"
             style={styles.flex}
             contentContainerStyle={[
               styles.content,
@@ -114,7 +115,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.xxxl,
     paddingTop: theme.spacing.xxxl,
   },
   centred: {

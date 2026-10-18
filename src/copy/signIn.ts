@@ -6,6 +6,7 @@ import { BRAND } from '@/config/brand'
  * `BRAND.name` is interpolated, never typed — the rule in `config/brand.ts`.
  */
 export const SIGN_IN_COPY = {
+  eyebrow: 'Welcome back',
   heading: 'Welcome back',
   lede: 'Your memories are waiting.',
   emailLabel: 'Email address',
@@ -17,6 +18,8 @@ export const SIGN_IN_COPY = {
   dividerLabel: 'Or continue with',
   footerText: `New to ${BRAND.name}?`,
   footerLink: 'Create an account',
+  errorCardTitle: 'Nothing was changed',
+  errorCardBody: 'Check your details and try again.',
   // No `errors` record: every message this screen shows is the shared default in
   // `copy/errors.ts`. A screen only carries copy it actually differs on.
 } as const

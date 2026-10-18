@@ -1,14 +1,17 @@
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import { View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { useBackTo } from '@/hooks/useBackTo'
+import { isMockMode } from '@/config/env'
 import { authErrorMessage } from '@/copy/errors'
 import { VERIFY_EMAIL_COPY as COPY } from '@/copy/verifyEmail'
 import { useSessionStore } from '@/state/sessionStore'
 import { Button } from '@/design-system/primitives/Button'
 import { Text } from '@/design-system/primitives/Text'
+import { AuthFormError } from '@/modules/module-00-auth/components/AuthFormError'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
 import { EnvelopeIllustration } from '@/modules/module-00-auth/components/EnvelopeIllustration'
 import { authService } from '@/services/auth'
@@ -30,13 +33,33 @@ function formatCooldown(seconds: number): string {
  */
 export function VerifyEmailScreen() {
   const router = useRouter()
+  const { token } = useLocalSearchParams<{ token?: string }>()
   const emailVerified = useSessionStore((state) => state.emailVerified)
+  const sessionEmail = useSessionStore((state) => state.session?.email ?? '')
   const back = useBackTo('/(auth)/welcome')
   // Explicit `number`: COPY is `as const`, so inference would narrow this to the
   // literal 60 and reject every decrement.
   const [remaining, setRemaining] = useState<number>(COPY.resendCooldownSeconds)
   const [isSending, setIsSending] = useState(false)
+  const [isChecking, setIsChecking] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!token) return
+    let active = true
+    setIsChecking(true)
+    void authService.verifyEmail({ token }).then((result) => {
+      if (!active) return
+      setIsChecking(false)
+      if (!result.ok) {
+        setError(authErrorMessage(result.error.code))
+        return
+      }
+      emailVerified()
+      router.replace(sessionEmail ? '/(onboarding)/setup' : '/(auth)/sign-in')
+    })
+    return () => { active = false }
+  }, [emailVerified, router, sessionEmail, token])
 
   useEffect(() => {
     if (remaining <= 0) return
@@ -49,38 +72,60 @@ export function VerifyEmailScreen() {
   }, [remaining])
 
   const resend = useCallback(async () => {
-    setIsSending(true)
     setError(null)
 
-    // The address belongs to the session, which does not exist yet. The mock
-    // ignores it; a real provider will read it from the session.
-    const result = await authService.resendVerification({ email: '' })
+    // A direct/deep navigation can reach this route without a hydrated UI
+    // session. Never replace that missing identity with an empty placeholder:
+    // the backend correctly rejects it as an invalid email.
+    if (!sessionEmail) {
+      setError(COPY.missingSession)
+      return
+    }
+
+    setIsSending(true)
+    const result = await authService.resendVerification({ email: sessionEmail })
 
     setIsSending(false)
 
     if (!result.ok) {
+      if (result.error.code === 'EMAIL_ALREADY_VERIFIED') {
+        emailVerified()
+        router.replace('/(onboarding)/setup')
+        return
+      }
       setError(authErrorMessage(result.error.code))
       return
     }
 
     setRemaining(COPY.resendCooldownSeconds)
-  }, [])
+  }, [emailVerified, router, sessionEmail])
 
   const goToOnboarding = useCallback(
-    () => {
-      /*
-       * Marks the session verified on the way through.
-       *
-       * There is no provider to ask, so "I have clicked the link" is the only
-       * signal this build has — the same assumption `copy/verifyEmail.ts`
-       * already documents. Without it the onboarding guard would hold, but the
-       * `(app)` guard behind it never would, and the user would be bounced back
-       * to Welcome at the end of onboarding having done everything right.
-       */
+    async () => {
+      setError(null)
+
+      // Showcase mode has no mail server. Keep its explicit manual continuation
+      // while requiring server authority whenever an API URL is configured.
+      if (!isMockMode) {
+        setIsChecking(true)
+        const current = await authService.getCurrentSession()
+        setIsChecking(false)
+
+        if (!current.ok) {
+          setError(authErrorMessage(current.error.code))
+          return
+        }
+
+        if (!current.value.emailVerified) {
+          setError(COPY.notVerified)
+          return
+        }
+      }
+
       emailVerified()
       router.replace('/(onboarding)/setup')
     },
-    [router],
+    [emailVerified, router],
   )
 
   const isCoolingDown = remaining > 0
@@ -90,6 +135,7 @@ export function VerifyEmailScreen() {
       <EnvelopeIllustration />
 
       <View style={styles.copy}>
+        <AuthEyebrow align="center">{COPY.eyebrow}</AuthEyebrow>
         <Text variant="h2" tone="heading" align="center">
           {COPY.heading}
         </Text>
@@ -99,11 +145,7 @@ export function VerifyEmailScreen() {
       </View>
 
       <View style={styles.actions}>
-        {error ? (
-          <Text variant="footnote" tone="error" align="center">
-            {error}
-          </Text>
-        ) : null}
+        <AuthFormError message={error} />
 
         <Button
           label={COPY.resend}
@@ -125,13 +167,16 @@ export function VerifyEmailScreen() {
         />
 
         {/*
-          The forward exit into M01. This screen used to be a dead end: the
-          only way on was backwards. There is still no session reporting
-          `emailVerified`, so this is the user asserting they followed the
-          link, and it replaces rather than pushes — returning to "check your
-          inbox" after pairing has begun is nonsense.
+          The forward exit into M01. API mode confirms the session through
+          `/auth/me`; showcase mode has no mail server and uses the explicit
+          manual continuation described above. Replace rather than push —
+          returning to "check your inbox" after pairing has begun is nonsense.
         */}
-        <Button label={COPY.continue} onPress={goToOnboarding} />
+        <Button
+          label={isChecking ? COPY.checking : COPY.continue}
+          onPress={goToOnboarding}
+          loading={isChecking}
+        />
 
         {/*
           `outline` — a bordered card, not a flat tint. `soft` was the odd one

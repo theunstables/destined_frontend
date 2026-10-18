@@ -3,6 +3,7 @@ import { Text as RNText, type TextProps as RNTextProps } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 export type TextVariant =
+  | 'display'
   | 'h1'
   | 'h2'
   | 'h3'
@@ -83,6 +84,7 @@ const styles = StyleSheet.create((theme) => ({
   text: {
     variants: {
       variant: {
+        display: theme.typography.display,
         h1: theme.typography.h1,
         h2: theme.typography.h2,
         h3: theme.typography.h3,

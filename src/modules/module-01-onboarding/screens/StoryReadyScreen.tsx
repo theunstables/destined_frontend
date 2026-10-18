@@ -8,6 +8,7 @@ import { STORY_READY_COPY as COPY } from '@/copy/storyReady'
 import { Button } from '@/design-system/primitives/Button'
 import { Card } from '@/design-system/primitives/Card'
 import { Text } from '@/design-system/primitives/Text'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
 import { useStoryStore } from '@/state/storyStore'
 import { formatStoryDate } from '@/utils/formatStoryDate'
@@ -43,6 +44,7 @@ export function StoryReadyScreen() {
   return (
     <AuthScreenLayout centred>
       <View style={styles.copy}>
+        <AuthEyebrow align="center">{COPY.eyebrow}</AuthEyebrow>
         <Text variant="h1" tone="heading" align="center">
           {COPY.heading}
         </Text>
@@ -84,7 +86,7 @@ export function StoryReadyScreen() {
 
 const styles = StyleSheet.create((theme) => ({
   copy: {
-    gap: theme.spacing.xs,
+    gap: theme.spacing.sm,
     paddingBottom: theme.spacing.huge,
   },
   row: {

@@ -21,6 +21,7 @@ export const SETTINGS_PRIVACY_COPY = {
   onlineStatusDetail: 'They see that you are in the app right now.',
   screenshotAlerts: 'Tell them about screenshots',
   screenshotAlertsDetail: 'They are told when you screenshot your conversation.',
+  unavailable: 'This privacy control is not available in this build.',
 
   moreGroup: 'More',
   sessions: 'Security & Sessions',

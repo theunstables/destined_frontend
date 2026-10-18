@@ -1,6 +1,8 @@
 import { useRouter } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { Image } from 'expo-image'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { isMockMode } from '@/config/env'
 import { SETTINGS_DATA_COPY as COPY } from '@/copy/settingsData'
 import { DangerRow } from '@/design-system/patterns/DangerRow'
 import { SectionPanel } from '@/design-system/patterns/SectionPanel'
@@ -10,6 +12,9 @@ import { SettingsScreenLayout } from '@/design-system/patterns/SettingsScreenLay
 import { Text } from '@/design-system/primitives/Text'
 import { StorageBar } from '@/modules/module-05-profile/components/StorageBar'
 import { formatBytes, MOCK_STORAGE } from '@/modules/module-05-profile/data/mock'
+import { deliverAccountExport } from '@/modules/module-05-profile/exportAccountData'
+import { accountService } from '@/services/account'
+import { storageUsageService } from '@/services/storageUsage'
 import {
   usePreferencesStore,
   type AutoDownload,
@@ -42,77 +47,126 @@ export function DataScreen() {
   const setPreference = usePreferencesStore((s) => s.setPreference)
 
   const [storage, setStorage] = useState(MOCK_STORAGE)
+  const [usageError, setUsageError] = useState(false)
   const [isCacheCleared, setIsCacheCleared] = useState(false)
-  const [isExportRequested, setIsExportRequested] = useState(false)
+  const [exportState, setExportState] = useState<'idle' | 'preparing' | 'ready' | 'error'>('idle')
+  const exportInFlight = useRef(false)
 
   const goBack = useCallback(() => router.back(), [router])
 
-  const clearCache = useCallback(() => {
-    setStorage((current) => {
-      const slices = current.slices.filter((slice) => slice.key !== 'cache')
+  useEffect(() => {
+    if (isMockMode) return
+    let active = true
+    void storageUsageService.get().then(
+      (usage) => {
+        if (!active) return
+        setStorage({
+          totalBytes: usage.totalBytes,
+          slices: [
+            { key: 'photos', label: 'Photos', bytes: usage.photoBytes },
+            { key: 'video', label: 'Video moments', bytes: usage.videoBytes },
+            { key: 'voice', label: 'Voice notes', bytes: usage.audioBytes },
+          ],
+        })
+      },
+      () => { if (active) setUsageError(true) },
+    )
+    return () => { active = false }
+  }, [])
 
-      return {
-        slices,
-        totalBytes: slices.reduce((total, slice) => total + slice.bytes, 0),
-      }
-    })
+  const clearCache = useCallback(async () => {
+    await Promise.all([Image.clearMemoryCache(), Image.clearDiskCache()])
+    if (isMockMode) {
+      setStorage((current) => {
+        const slices = current.slices.filter((slice) => slice.key !== 'cache')
+
+        return {
+          slices,
+          totalBytes: slices.reduce((total, slice) => total + slice.bytes, 0),
+        }
+      })
+    }
     setIsCacheCleared(true)
   }, [])
 
-  const requestExport = useCallback(() => setIsExportRequested(true), [])
+  const requestExport = useCallback(async () => {
+    if (exportInFlight.current) return
+    exportInFlight.current = true
+    setExportState('preparing')
+    const result = await accountService.exportData()
+
+    if (!result.ok) {
+      exportInFlight.current = false
+      setExportState('error')
+      return
+    }
+
+    try {
+      await deliverAccountExport(result.value)
+      setExportState('ready')
+    } catch {
+      setExportState('error')
+    } finally {
+      exportInFlight.current = false
+    }
+  }, [])
 
   return (
     <SettingsScreenLayout title={COPY.title} lede={COPY.lede} onBack={goBack}>
       <SectionPanel title={COPY.usageGroup}>
-        <Text variant="h3" tone="heading">
-          {`${COPY.totalPrefix} ${formatBytes(storage.totalBytes)}`}
-        </Text>
-
-        <StorageBar slices={storage.slices} totalBytes={storage.totalBytes} />
-
-        {storage.slices.map((slice) => (
-          <SettingsRow
-            key={slice.key}
-            icon="circle"
-            label={slice.label}
-            value={formatBytes(slice.bytes)}
-          />
-        ))}
+        {!usageError ? (
+          <>
+            <Text variant="h3" tone="heading">
+              {`${COPY.totalPrefix} ${formatBytes(storage.totalBytes)}`}
+            </Text>
+            <StorageBar slices={storage.slices} totalBytes={storage.totalBytes} />
+            {storage.slices.map((slice) => (
+              <SettingsRow
+                key={slice.key}
+                icon="circle"
+                label={slice.label}
+                value={formatBytes(slice.bytes)}
+              />
+            ))}
+          </>
+        ) : (
+          <Text variant="body" tone="body">{COPY.usageUnavailable}</Text>
+        )}
       </SectionPanel>
 
       <SectionPanel title={COPY.cacheGroup}>
-        <DangerRow
-          icon="trash-2"
-          label={COPY.clearCache}
-          detail={COPY.clearCacheDetail}
-          confirmTitle={COPY.clearCacheTitle}
-          confirmBody={COPY.clearCacheBody}
-          cancelLabel={COPY.clearCacheCancel}
-          confirmLabel={COPY.clearCacheConfirm}
-          onConfirm={clearCache}
-        />
+          <DangerRow
+            icon="trash-2"
+            label={COPY.clearCache}
+            detail={COPY.clearCacheDetail}
+            confirmTitle={COPY.clearCacheTitle}
+            confirmBody={COPY.clearCacheBody}
+            cancelLabel={COPY.clearCacheCancel}
+            confirmLabel={COPY.clearCacheConfirm}
+            onConfirm={() => { void clearCache() }}
+          />
 
-        {isCacheCleared ? (
-          <Text variant="footnote" tone="success">
-            {COPY.cacheCleared}
-          </Text>
-        ) : null}
+          {isCacheCleared ? (
+            <Text variant="footnote" tone="success">
+              {COPY.cacheCleared}
+            </Text>
+          ) : null}
       </SectionPanel>
 
       <SectionPanel title={COPY.transferGroup}>
-        <SettingsChoiceRow
-          label={COPY.autoDownloadLabel}
-          segments={DOWNLOAD_SEGMENTS}
-          value={autoDownload}
-          onChange={(next) => setPreference('autoDownload', next)}
-        />
-        <SettingsChoiceRow
-          label={COPY.qualityLabel}
-          detail={COPY.qualityDetail}
-          segments={QUALITY_SEGMENTS}
-          value={uploadQuality}
-          onChange={(next) => setPreference('uploadQuality', next)}
-        />
+          <SettingsChoiceRow
+            label={COPY.autoDownloadLabel}
+            segments={DOWNLOAD_SEGMENTS}
+            value={autoDownload}
+            onChange={(next) => setPreference('autoDownload', next)}
+          />
+          <SettingsChoiceRow
+            label={COPY.qualityLabel}
+            detail={COPY.qualityDetail}
+            segments={QUALITY_SEGMENTS}
+            value={uploadQuality}
+            onChange={(next) => setPreference('uploadQuality', next)}
+          />
       </SectionPanel>
 
       <SectionPanel title={COPY.exportGroup}>
@@ -123,9 +177,17 @@ export function DataScreen() {
           onPress={requestExport}
         />
 
-        {isExportRequested ? (
-          <Text variant="footnote" tone="success">
-            {COPY.downloadRequested}
+        {exportState === 'preparing' ? (
+          <Text variant="footnote" tone="body" accessibilityLiveRegion="polite">
+            {COPY.downloadPreparing}
+          </Text>
+        ) : exportState === 'ready' ? (
+          <Text variant="footnote" tone="success" accessibilityLiveRegion="polite">
+            {COPY.downloadReady}
+          </Text>
+        ) : exportState === 'error' ? (
+          <Text variant="footnote" tone="error" accessibilityRole="alert">
+            {COPY.downloadError}
           </Text>
         ) : null}
       </SectionPanel>

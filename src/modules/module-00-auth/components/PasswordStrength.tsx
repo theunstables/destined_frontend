@@ -2,6 +2,7 @@ import { View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { RESET_PASSWORD_COPY as COPY } from '@/copy/resetPassword'
+import { Card } from '@/design-system/primitives/Card'
 import { Text } from '@/design-system/primitives/Text'
 import { PASSWORD_RULES } from '@/modules/module-00-auth/state/authSchemas'
 
@@ -45,34 +46,36 @@ export function PasswordStrength({ value }: PasswordStrengthProps) {
   styles.useVariants({ level })
 
   return (
-    <View
-      style={styles.container}
-      accessibilityLabel={`${COPY.strengthLabel}: ${LEVELS[level].label}`}
-    >
-      <View style={styles.row}>
-        <Text variant="footnote" tone="body">
-          {COPY.strengthLabel}
-        </Text>
+    <Card>
+      <View
+        style={styles.container}
+        accessibilityLabel={`${COPY.strengthLabel}: ${LEVELS[level].label}`}
+      >
+        <View style={styles.row}>
+          <Text variant="caption" tone="body">
+            {COPY.strengthLabel}
+          </Text>
 
-        <Text variant="caption" tone={LEVELS[level].tone}>
-          {LEVELS[level].label}
-        </Text>
+          <Text variant="caption" tone={LEVELS[level].tone}>
+            {LEVELS[level].label}
+          </Text>
+        </View>
+
+        <View style={styles.bars}>
+          {PASSWORD_RULES.map((rule, index) => {
+            const isFilled = index < met
+
+            return (
+              <View
+                key={rule.id}
+                testID={isFilled ? 'strength-bar-filled' : 'strength-bar-empty'}
+                style={[styles.bar, isFilled ? styles.barFilled : styles.barEmpty]}
+              />
+            )
+          })}
+        </View>
       </View>
-
-      <View style={styles.bars}>
-        {PASSWORD_RULES.map((rule, index) => {
-          const isFilled = index < met
-
-          return (
-            <View
-              key={rule.id}
-              testID={isFilled ? 'strength-bar-filled' : 'strength-bar-empty'}
-              style={[styles.bar, isFilled ? styles.barFilled : styles.barEmpty]}
-            />
-          )
-        })}
-      </View>
-    </View>
+    </Card>
   )
 }
 
@@ -85,7 +88,6 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.md,
   },
   bars: {
     flexDirection: 'row',

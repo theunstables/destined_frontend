@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -10,6 +11,8 @@ import { Avatar } from '@/design-system/primitives/Avatar'
 import { Text } from '@/design-system/primitives/Text'
 import { CallControls } from '@/modules/module-03-chat/components/CallControls'
 import { clock } from '@/modules/module-03-chat/components/VoiceNotePlayer'
+import { useRelationshipStore } from '@/state/relationshipStore'
+import { useCallSession } from '@/modules/module-03-chat/hooks/useCallSession'
 
 /** How often the elapsed-call readout ticks. */
 const TICK_MS = 1000
@@ -35,16 +38,26 @@ export function VideoMomentScreen() {
   const [elapsedMs, setElapsedMs] = useState(0)
   const [muted, setMuted] = useState(false)
   const [cameraOn, setCameraOn] = useState(true)
+  const { callId = 'invalid-call', incoming } = useLocalSearchParams<{ callId?: string; incoming?: string }>()
+  const call = useCallSession(callId, 'video', incoming === 'true')
+  const partnerName = useRelationshipStore((state) => state.partner?.name)
+    ?? CHAT_COPY.home.defaultPartnerName
 
   // Cleared on unmount — see `VoiceMomentScreen`'s identical comment; the
   // reasoning (and the Task 9 review finding it comes from) is the same.
   useEffect(() => {
+    if (call.state !== 'connected') return
     const timer = setInterval(() => {
       setElapsedMs((previous) => previous + TICK_MS)
     }, TICK_MS)
 
     return () => clearInterval(timer)
-  }, [])
+  }, [call.state])
+
+  const end = () => {
+    call.end()
+    onEnd()
+  }
 
   return (
     <View style={styles.page}>
@@ -53,7 +66,7 @@ export function VideoMomentScreen() {
       {/* The "partner feed" — full-bleed, with their avatar standing in for
           the frame a real camera would decode. */}
       <View style={styles.partnerFeed}>
-        <Avatar name="Sweatcha" size={128} />
+        <Avatar name={partnerName} size={128} />
       </View>
 
       {/*
@@ -71,7 +84,9 @@ export function VideoMomentScreen() {
       */}
       <View style={[styles.timer, { top: insets.top + 16 }]}>
         <Text variant="h2" tone="onPrimary" align="center">
-          {`${CHAT_COPY.moments.togetherForPrefix} ${clock(elapsedMs)}`}
+          {call.state === 'connected'
+            ? `${CHAT_COPY.moments.togetherForPrefix} ${clock(elapsedMs)}`
+            : call.state === 'calling' ? 'Calling…' : 'Call ended'}
         </Text>
       </View>
 
@@ -90,7 +105,9 @@ export function VideoMomentScreen() {
             the line belongs to the bottom cluster — not a pixel offset
             invented from a zoomed-out screenshot. */}
         <Text variant="label" tone="onPrimary" align="center">
-          {CHAT_COPY.moments.videoCaption}
+          {call.state === 'connected'
+            ? 'Signaling connected. Video starts when a media provider is configured.'
+            : CHAT_COPY.moments.videoCaption}
         </Text>
 
         <CallControls
@@ -98,7 +115,7 @@ export function VideoMomentScreen() {
           onToggleMute={() => setMuted((was) => !was)}
           cameraOn={cameraOn}
           onToggleCamera={() => setCameraOn((was) => !was)}
-          onEnd={onEnd}
+          onEnd={end}
         />
       </View>
     </View>

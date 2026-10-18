@@ -12,6 +12,7 @@ import { SettingsScreenLayout } from '@/design-system/patterns/SettingsScreenLay
 import { Button } from '@/design-system/primitives/Button'
 import { Input } from '@/design-system/primitives/Input'
 import { Text } from '@/design-system/primitives/Text'
+import { pairingService } from '@/services/pairing'
 import { useSpaceStore, type CoverStyle } from '@/state/spaceStore'
 
 const COVER_SEGMENTS: { value: CoverStyle; label: string }[] = [
@@ -40,10 +41,10 @@ export function OurSpaceSettingsScreen() {
   const name = useSpaceStore((state) => state.name)
   const shortName = useSpaceStore((state) => state.shortName)
   const storedCover = useSpaceStore((state) => state.coverStyle)
-  const setSpace = useSpaceStore((state) => state.setSpace)
+  const syncWithServer = useSpaceStore((state) => state.syncWithServer)
 
   const [cover, setCover] = useState<CoverStyle>(storedCover)
-  const [isSaved, setIsSaved] = useState(false)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
   const { control, handleSubmit } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -53,11 +54,24 @@ export function OurSpaceSettingsScreen() {
   const goBack = useCallback(() => router.back(), [router])
 
   const onSubmit = useCallback(
-    (values: FormValues) => {
-      setSpace({ name: values.name, shortName: values.shortName, coverStyle: cover })
-      setIsSaved(true)
+    async (values: FormValues) => {
+      if (saveState === 'saving') return
+      setSaveState('saving')
+      const result = await pairingService.updateSpace({
+        name: values.name,
+        shortName: values.shortName ?? '',
+        coverStyle: cover,
+      })
+
+      if (!result.ok) {
+        setSaveState('error')
+        return
+      }
+
+      syncWithServer(result.value)
+      setSaveState('saved')
     },
-    [cover, setSpace],
+    [cover, saveState, syncWithServer],
   )
 
   return (
@@ -107,11 +121,19 @@ export function OurSpaceSettingsScreen() {
         />
       </SectionPanel>
 
-      <Button label={COPY.save} onPress={handleSubmit(onSubmit)} />
+      <Button
+        label={COPY.save}
+        onPress={handleSubmit(onSubmit)}
+        loading={saveState === 'saving'}
+      />
 
-      {isSaved ? (
-        <Text variant="footnote" tone="success">
+      {saveState === 'saved' ? (
+        <Text variant="footnote" tone="success" accessibilityLiveRegion="polite">
           {COPY.saved}
+        </Text>
+      ) : saveState === 'error' ? (
+        <Text variant="footnote" tone="error" accessibilityRole="alert">
+          {COPY.saveError}
         </Text>
       ) : null}
     </SettingsScreenLayout>

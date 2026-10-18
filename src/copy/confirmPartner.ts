@@ -5,8 +5,10 @@
  * The last stop before the relationship is committed.
  */
 export const CONFIRM_PARTNER_COPY = {
+  eyebrow: 'Confirm Partner',
   heading: 'Is this your person?',
-  lede: 'Once you connect, your space becomes theirs too.',
+  lede: 'Confirm before the shared space opens.',
+  cardLede: 'One private world for two.',
   confirm: 'Yes, Connect Us ❤️',
   cancel: 'Cancel',
   /**

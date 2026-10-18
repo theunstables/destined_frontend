@@ -16,8 +16,11 @@ import { SocialButton } from '@/design-system/patterns/SocialButton'
 import { Button } from '@/design-system/primitives/Button'
 import { Divider } from '@/design-system/primitives/Divider'
 import { Text } from '@/design-system/primitives/Text'
+import { AuthFormError } from '@/modules/module-00-auth/components/AuthFormError'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthMedallion } from '@/modules/module-00-auth/components/AuthMedallion'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
+import { FloatingInfoCard } from '@/modules/module-00-auth/components/FloatingInfoCard'
 import { signInSchema, type SignInValues } from '@/modules/module-00-auth/state/authSchemas'
 import { authService } from '@/services/auth'
 
@@ -36,14 +39,16 @@ export function SignInScreen() {
   const { theme } = useUnistyles()
   const [formError, setFormError] = useState<string | null>(null)
 
-  const { control, handleSubmit, setValue, formState } = useForm<SignInValues>({
-    resolver: zodResolver(signInSchema),
-    defaultValues: { email: '', password: '' },
-    mode: 'onBlur',
-  })
+  const { control, handleSubmit, setValue, setError, clearErrors, formState } =
+    useForm<SignInValues>({
+      resolver: zodResolver(signInSchema),
+      defaultValues: { email: '', password: '' },
+      mode: 'onBlur',
+    })
 
   const submit = handleSubmit(async (values) => {
     setFormError(null)
+    clearErrors('password')
 
     const result = await authService.signIn(values)
 
@@ -65,7 +70,16 @@ export function SignInScreen() {
       return
     }
 
-    setFormError(authErrorMessage(result.error.code))
+    const message = authErrorMessage(result.error.code)
+
+    if (result.error.code === 'INVALID_CREDENTIALS') {
+      // A09 ties the failure to the credential field with an inline message
+      // and error border. The generic wording still avoids disclosing whether
+      // the email address exists.
+      setError('password', { type: 'server', message })
+    } else {
+      setFormError(message)
+    }
     // The email is kept — retyping a correct address is pure friction.
     setValue('password', '')
   })
@@ -78,6 +92,7 @@ export function SignInScreen() {
       <AuthMedallion />
 
       <View style={styles.copy}>
+        <AuthEyebrow align="center">{COPY.eyebrow}</AuthEyebrow>
         <Text variant="h2" tone="heading" align="center">
           {COPY.heading}
         </Text>
@@ -116,11 +131,7 @@ export function SignInScreen() {
           </Text>
         </View>
 
-        {formError ? (
-          <Text variant="footnote" tone="error" align="center">
-            {formError}
-          </Text>
-        ) : null}
+        <AuthFormError message={formError} />
 
         <Button
           label={COPY.submit}
@@ -130,6 +141,15 @@ export function SignInScreen() {
             <Feather name="arrow-right" size={16} color={theme.colors.text.onPrimary} />
           }
         />
+
+        {formState.errors.password?.type === 'server' ? (
+          <FloatingInfoCard
+            icon="alert-circle"
+            title={COPY.errorCardTitle}
+            body={COPY.errorCardBody}
+            tone="error"
+          />
+        ) : null}
       </View>
 
       <View style={styles.divider}>

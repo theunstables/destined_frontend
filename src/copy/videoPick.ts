@@ -7,6 +7,8 @@ export const VIDEO_PICK_COPY = {
     PERMISSION_DENIED:
       'We need permission to open your videos. You can turn it on in your device settings.',
     UNAVAILABLE: 'No video library is available on this device.',
+    TOO_LARGE: 'That video is larger than 25 MB. Choose a smaller one.',
+    UNSUPPORTED_TYPE: 'That video format is not supported. Choose an MP4 or QuickTime video.',
     UNKNOWN: 'That video could not be opened. Try another one.',
   },
 

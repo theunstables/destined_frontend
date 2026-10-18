@@ -5,8 +5,9 @@
  * has something in it before the recap, without turning setup into data entry.
  */
 export const FIRST_MEMORY_COPY = {
+  eyebrow: 'First Memory',
   heading: 'Give us one memory to start with. ❤️',
-  lede: 'A photo. A place. A little moment you never want to forget.',
+  lede: 'A little moment you never want to forget.',
   photoLabel: 'Add Photo',
   dateLabel: 'When was it?',
   captionLabel: 'What happened?',

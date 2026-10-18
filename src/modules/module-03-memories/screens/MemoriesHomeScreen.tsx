@@ -15,7 +15,7 @@ import { SAMPLE_ALBUMS } from '@/sample/albums'
 import { SAMPLE_MEMORIES } from '@/sample/memories'
 import { USE_SAMPLE_CONTENT } from '@/sample'
 import { memoriesService } from '@/services/memories'
-import type { Memory } from '@/services/memories/types'
+import type { Memory, MemoryAlbum } from '@/services/memories/types'
 import { formatDate } from '@/utils/formatStoryDate'
 
 /**
@@ -25,8 +25,6 @@ import { formatDate } from '@/utils/formatStoryDate'
  * past it — that is a horizontal scroller caught mid-scroll, so the rail carries
  * the whole set and lets the next card peek, rather than stopping at three.
  */
-const ALBUM_RAIL = SAMPLE_ALBUMS
-
 /** Card width + gap, so the rail settles with a card edge against the inset. */
 const RAIL_SNAP = 116 + 12
 
@@ -44,18 +42,24 @@ const RAIL_SNAP = 116 + 12
 export function MemoriesHomeScreen() {
   const router = useRouter()
   const [memories, setMemories] = useState<Memory[] | null>(null)
+  const [albums, setAlbums] = useState<MemoryAlbum[] | typeof SAMPLE_ALBUMS>([])
 
   useEffect(() => {
     let cancelled = false
 
     async function load() {
-      const result = await memoriesService.list()
+      const [result, albumResult] = await Promise.all([
+        memoriesService.list(),
+        memoriesService.listAlbums(),
+      ])
 
       if (cancelled) return
 
       const live = result.ok ? result.value : []
 
       setMemories(live.length === 0 && USE_SAMPLE_CONTENT ? SAMPLE_MEMORIES : live)
+      const liveAlbums = albumResult.ok ? albumResult.value : []
+      setAlbums(liveAlbums.length === 0 && USE_SAMPLE_CONTENT ? SAMPLE_ALBUMS : liveAlbums)
     }
 
     void load()
@@ -142,7 +146,7 @@ export function MemoriesHomeScreen() {
         </View>
       ) : null}
 
-      <View style={styles.section}>
+      {albums.length > 0 ? <View style={styles.section}>
         <View style={styles.sectionHead}>
           <Text variant="labelStrong" tone="heading">
             {COPY.home.albumsLabel}
@@ -164,11 +168,11 @@ export function MemoriesHomeScreen() {
           decelerationRate="fast"
           contentContainerStyle={styles.rail}
         >
-          {ALBUM_RAIL.map((album) => (
+          {albums.map((album) => (
             <AlbumCard key={album.key} album={album} onPress={openAlbum} layout="rail" />
           ))}
         </ScrollView>
-      </View>
+      </View> : null}
 
       <View style={styles.section}>
         <Text variant="labelStrong" tone="heading">

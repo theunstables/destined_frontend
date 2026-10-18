@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router'
 import { View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
+import { isMockMode } from '@/config/env'
 import { PLANS_COPY } from '@/copy/plans'
 import { AppScreenLayout } from '@/design-system/patterns/AppScreenLayout'
 import { PressableScale } from '@/design-system/patterns/PressableScale'
@@ -252,8 +253,12 @@ export function PlansHubScreen() {
           chip={PLANS_COPY.cards.watch.chip}
           title={PLANS_COPY.cards.watch.title}
           lede={PLANS_COPY.cards.watch.lede}
-          status={PLANS_COPY.cards.watch.status(SAMPLE_WATCH_ROOM.tonight.title)}
-          statusDetail={`${SAMPLE_WATCH_ROOM.queue.length} in tonight's queue`}
+          status={isMockMode
+            ? PLANS_COPY.cards.watch.status(SAMPLE_WATCH_ROOM.tonight.title)
+            : PLANS_COPY.cards.watch.liveStatus}
+          statusDetail={isMockMode
+            ? `${SAMPLE_WATCH_ROOM.queue.length} in tonight's queue`
+            : PLANS_COPY.cards.watch.liveDetail}
           onPress={() => router.push('/(app)/plans/watch')}
         />
 
@@ -263,8 +268,10 @@ export function PlansHubScreen() {
           chip={PLANS_COPY.cards.places.chip}
           title={PLANS_COPY.cards.places.title}
           lede={PLANS_COPY.cards.places.lede}
-          status={PLANS_COPY.cards.places.status(34)}
-          statusDetail={SAMPLE_PLACES.area}
+          status={isMockMode
+            ? PLANS_COPY.cards.places.status(34)
+            : PLANS_COPY.cards.places.liveStatus}
+          statusDetail={isMockMode ? SAMPLE_PLACES.area : PLANS_COPY.cards.places.liveDetail}
           onPress={() => router.push('/(app)/plans/places')}
         />
       </View>

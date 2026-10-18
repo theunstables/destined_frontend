@@ -12,6 +12,8 @@ import { RESET_PASSWORD_COPY as COPY } from '@/copy/resetPassword'
 import { StatusScreen } from '@/design-system/patterns/StatusScreen'
 import { Button } from '@/design-system/primitives/Button'
 import { Text } from '@/design-system/primitives/Text'
+import { AuthFormError } from '@/modules/module-00-auth/components/AuthFormError'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthMedallion } from '@/modules/module-00-auth/components/AuthMedallion'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
 import { PasswordStrength } from '@/modules/module-00-auth/components/PasswordStrength'
@@ -34,11 +36,10 @@ import { authService } from '@/services/auth'
  * a form whose submit could never succeed.
  *
  * On success the screen swaps state IN PLACE, the same shape M00-S05 uses, and
- * then leaves for sign in rather than the app. The design's heading says
- * "You're back in", but `POST /auth/password/reset` returns no tokens and
- * revokes every existing refresh session, so the user is definitively signed
- * out. Sending them anywhere else would mean inventing a session the contract
- * does not grant.
+ * then leaves for sign in rather than the app. `POST /auth/password/reset`
+ * returns no tokens and revokes every existing refresh session, so the user is
+ * definitively signed out. Sending them anywhere else would mean inventing a
+ * session the contract does not grant.
  */
 export function ResetPasswordScreen() {
   const router = useRouter()
@@ -92,11 +93,13 @@ export function ResetPasswordScreen() {
   if (isReset) {
     return (
       <AuthScreenLayout centred>
+        <AuthEyebrow align="center">{COPY.successEyebrow}</AuthEyebrow>
         <StatusScreen
           illustration={<AuthMedallion />}
           heading={COPY.successHeading}
           lede={COPY.successLede}
           actions={<Button label={COPY.successAction} onPress={goToSignIn} />}
+          announce
         />
       </AuthScreenLayout>
     )
@@ -105,6 +108,7 @@ export function ResetPasswordScreen() {
   return (
     <AuthScreenLayout onBack={back}>
       <View style={styles.copy}>
+        <AuthEyebrow>{COPY.eyebrow}</AuthEyebrow>
         <Text variant="h2" tone="heading">
           {COPY.heading}
         </Text>
@@ -134,11 +138,7 @@ export function ResetPasswordScreen() {
           autoComplete="new-password"
         />
 
-        {formError ? (
-          <Text variant="footnote" tone="error" align="center">
-            {formError}
-          </Text>
-        ) : null}
+        <AuthFormError message={formError} />
 
         <Button label={COPY.submit} onPress={submit} loading={formState.isSubmitting} />
       </View>

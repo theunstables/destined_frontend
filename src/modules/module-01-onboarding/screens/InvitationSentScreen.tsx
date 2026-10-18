@@ -9,9 +9,11 @@ import { ConfirmDialog } from '@/components/feedback/ConfirmDialog'
 import { FeedbackBanner } from '@/components/feedback/FeedbackBanner'
 import { INVITATION_SENT_COPY as COPY } from '@/copy/invitationSent'
 import { Button } from '@/design-system/primitives/Button'
-import { CodeDisplay } from '@/design-system/primitives/CodeDisplay'
 import { Text } from '@/design-system/primitives/Text'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
+import { FloatingInfoCard } from '@/modules/module-00-auth/components/FloatingInfoCard'
+import { PairingCodeCard } from '@/modules/module-01-onboarding/components/PairingCodeCard'
 import { pairingService } from '@/services/pairing'
 import { useRelationshipStore } from '@/state/relationshipStore'
 
@@ -139,6 +141,7 @@ export function InvitationSentScreen() {
       ) : null}
 
       <View style={styles.copy}>
+        <AuthEyebrow align="center">{COPY.eyebrow}</AuthEyebrow>
         <Text variant="h1" tone="heading" align="center">
           {COPY.heading}
         </Text>
@@ -148,16 +151,16 @@ export function InvitationSentScreen() {
       </View>
 
       <View style={styles.code}>
-        <Text variant="caption" tone="body" align="center">
-          {COPY.codeLabel}
-        </Text>
-        {code ? <CodeDisplay code={code} /> : null}
+        <PairingCodeCard label={COPY.codeLabel} code={code} status={COPY.codeStatus} />
       </View>
 
       {formError ? (
-        <Text variant="footnote" tone="error" align="center">
-          {formError}
-        </Text>
+        <FloatingInfoCard
+          icon="alert-circle"
+          title="Invitation unchanged"
+          body={formError}
+          tone="error"
+        />
       ) : null}
 
       <View style={styles.actions}>
@@ -181,7 +184,7 @@ export function InvitationSentScreen() {
 
 const styles = StyleSheet.create((theme) => ({
   copy: {
-    gap: theme.spacing.xs,
+    gap: theme.spacing.sm,
     paddingBottom: theme.spacing.xxxl,
   },
   code: {

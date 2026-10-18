@@ -27,6 +27,7 @@ describe('EnterPartnerCodeScreen', () => {
   it('renders its blocks from copy', async () => {
     await renderScreen(<EnterPartnerCodeScreen />)
 
+    expect(screen.getByText(COPY.eyebrow)).toBeTruthy()
     expect(screen.getByText(COPY.heading)).toBeTruthy()
     expect(screen.getByRole('button', { name: COPY.needInvite })).toBeTruthy()
   })
@@ -63,6 +64,9 @@ describe('EnterPartnerCodeScreen', () => {
     await enter('BADCOD')
     await screen.findByText(COPY.errors.CODE_INVALID)
 
+    expect(screen.getByText(COPY.invalidTitle)).toBeTruthy()
+    expect(screen.getByText(COPY.invalidBody)).toBeTruthy()
+    expect(screen.getByRole('alert')).toHaveTextContent(COPY.invalidTitle)
     expect(screen.getByLabelText(COPY.codeLabel).props.value).toBe('BADCOD')
   })
 

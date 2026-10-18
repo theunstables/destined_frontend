@@ -181,5 +181,13 @@ export function createMockAuthService({ latencyMs = 600 }: MockOptions = {}): Au
 
       return { ok: true, value: null }
     },
+
+    async verifyEmail({ token }) {
+      await wait(latencyMs)
+      if (!token.trim()) return fail('TOKEN_INVALID')
+      current = current ? { ...current, emailVerified: true } : session(RESERVED_VERIFIED_EMAIL, true)
+      setCachedSession(current)
+      return { ok: true, value: current }
+    },
   }
 }

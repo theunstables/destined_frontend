@@ -20,9 +20,9 @@ describe('PasswordRequirements', () => {
   })
 
   it('marks a rule met as soon as it passes', async () => {
-    await render(<PasswordRequirements value="abcdefgh" />)
+    await render(<PasswordRequirements value="abcdefgh1" />)
 
-    // Length and letter pass; only the digit rule is outstanding.
+    // Length and number pass; only the special-character rule is outstanding.
     expect(screen.getAllByTestId('rule-met')).toHaveLength(2)
     expect(screen.getAllByTestId('rule-unmet')).toHaveLength(1)
   })

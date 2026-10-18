@@ -9,6 +9,7 @@ import { Text } from '@/design-system/primitives/Text'
 
 type Props = {
   body: string
+  partnerName?: string
   onCancel: () => void
 }
 
@@ -26,14 +27,14 @@ type Props = {
  * flex that lets the body actually shrink to one line has to live on a
  * wrapping `View`: `Text` has no `style` prop to carry `flex: 1` itself.
  *
- * The attribution line above the quote (Figma `3390:585`'s "Replying to
- * Sweatcha") is `CHAT_COPY.conversation.replyingToPartner` — a fixed string, not a
- * prop, because nothing calling this component knows who authored the
- * message it quotes either: `ConversationScreen` hands over only the quoted
- * `body` (see `Composer`'s `replyTo`), and this app's one thread has exactly
- * one partner to attribute a reply to regardless of whose bubble it was.
+ * The attribution line uses the paired partner name passed down by the
+ * conversation screen, while retaining the mock persona as a component default.
  */
-export function ReplyPreview({ body, onCancel }: Props) {
+export function ReplyPreview({
+  body,
+  partnerName = CHAT_COPY.home.defaultPartnerName,
+  onCancel,
+}: Props) {
   // This strip appears above the composer the instant a reply starts, and
   // pushes the composer down as it does. Rising into place makes that shove
   // read as one movement instead of a jump.
@@ -44,7 +45,7 @@ export function ReplyPreview({ body, onCancel }: Props) {
       <View style={styles.bar} />
       <View style={styles.body}>
         <Text variant="footnote" tone="placeholder" numberOfLines={1}>
-          {CHAT_COPY.conversation.replyingToPartner}
+          {CHAT_COPY.conversation.replyingToPartner(partnerName)}
         </Text>
         <Text numberOfLines={1}>{body}</Text>
       </View>

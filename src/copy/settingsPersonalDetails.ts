@@ -39,4 +39,5 @@ export const SETTINGS_PERSONAL_DETAILS_COPY = {
 
   save: 'Save changes',
   saved: 'Your details were saved.',
+  saveError: 'Your details could not be saved. Try again.',
 } as const

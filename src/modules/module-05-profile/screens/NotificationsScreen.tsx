@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { SETTINGS_NOTIFICATIONS_COPY as COPY } from '@/copy/settingsNotifications'
 import { SectionPanel } from '@/design-system/patterns/SectionPanel'
@@ -7,7 +7,55 @@ import { SettingsRow } from '@/design-system/patterns/SettingsRow'
 import { SettingsScreenLayout } from '@/design-system/patterns/SettingsScreenLayout'
 import { SettingsToggleRow } from '@/design-system/patterns/SettingsToggleRow'
 import { Text } from '@/design-system/primitives/Text'
-import { usePreferencesStore } from '@/state/preferencesStore'
+import { notificationService, type NotificationPreferences } from '@/services/notifications'
+import { useNotificationStore } from '@/state/notificationStore'
+import {
+  usePreferencesStore,
+  type BooleanPreferenceKey,
+  type Preferences,
+} from '@/state/preferencesStore'
+
+type ServerPreferenceKey =
+  | 'notificationsEnabled'
+  | 'notifyMessages'
+  | 'notifyNewMemories'
+  | 'notifyOccasions'
+  | 'quietHoursEnabled'
+
+const SERVER_KEYS = new Set<BooleanPreferenceKey>([
+  'notificationsEnabled',
+  'notifyMessages',
+  'notifyNewMemories',
+  'notifyOccasions',
+  'quietHoursEnabled',
+])
+
+function timezone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  } catch {
+    return 'UTC'
+  }
+}
+
+export function toServerPreferences(
+  preferences: Preferences,
+  override?: { key: ServerPreferenceKey; value: boolean },
+): NotificationPreferences {
+  const value = <K extends ServerPreferenceKey>(key: K) =>
+    override?.key === key ? override.value : preferences[key]
+  const quiet = value('quietHoursEnabled')
+
+  return {
+    enabled: value('notificationsEnabled'),
+    messages: value('notifyMessages'),
+    memories: value('notifyNewMemories'),
+    occasions: value('notifyOccasions'),
+    quietStart: quiet ? preferences.quietHoursFrom : null,
+    quietEnd: quiet ? preferences.quietHoursTo : null,
+    timezone: timezone(),
+  }
+}
 
 /**
  * M05-S10 — Settings → Notifications.
@@ -22,9 +70,90 @@ export function NotificationsScreen() {
   const router = useRouter()
   const state = usePreferencesStore()
   const toggle = usePreferencesStore((s) => s.toggle)
+  const setPreference = usePreferencesStore((s) => s.setPreference)
+  const notificationPreferences = useNotificationStore((s) => s.preferences)
+  const notificationsHydrated = useNotificationStore((s) => s.hydrated)
+  const hydrateNotifications = useNotificationStore((s) => s.hydrate)
+  const [saveError, setSaveError] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const mounted = useRef(true)
+  const hasInteracted = useRef(false)
+  const serverWriteInFlight = useRef(false)
+
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+
+    const apply = (preferences: NotificationPreferences) => {
+      setPreference('notificationsEnabled', preferences.enabled)
+      setPreference('notifyMessages', preferences.messages)
+      setPreference('notifyNewMemories', preferences.memories)
+      setPreference('notifyOccasions', preferences.occasions)
+      setPreference('quietHoursEnabled', Boolean(preferences.quietStart && preferences.quietEnd))
+      if (preferences.quietStart) setPreference('quietHoursFrom', preferences.quietStart)
+      if (preferences.quietEnd) setPreference('quietHoursTo', preferences.quietEnd)
+    }
+
+    if (notificationsHydrated && notificationPreferences) {
+      apply(notificationPreferences)
+      return () => { active = false }
+    }
+
+    void notificationService.getPreferences().then((result) => {
+      if (!active || !result.ok) return
+      hydrateNotifications(result.value)
+      if (!hasInteracted.current) apply(result.value)
+    })
+
+    return () => { active = false }
+  }, [hydrateNotifications, notificationPreferences, notificationsHydrated, setPreference])
 
   const goBack = useCallback(() => router.back(), [router])
   const off = !state.notificationsEnabled
+
+  const change = useCallback((key: BooleanPreferenceKey) => {
+    const serverBacked = SERVER_KEYS.has(key)
+    if (serverBacked && serverWriteInFlight.current) return
+
+    hasInteracted.current = true
+    const previous = usePreferencesStore.getState()[key]
+    const next = !previous
+    toggle(key)
+    setSaveError(false)
+
+    // Voice notes, On This Day, partner activity, sound and vibration remain
+    // device presentation choices because the backend contract has no fields
+    // for them. Do not collapse distinct controls into unrelated API flags.
+    if (!serverBacked) return
+
+    serverWriteInFlight.current = true
+    setSaving(true)
+
+    const input = toServerPreferences(usePreferencesStore.getState(), {
+      key: key as ServerPreferenceKey,
+      value: next,
+    })
+
+    void notificationService.updatePreferences(input).then((result) => {
+      serverWriteInFlight.current = false
+      if (!mounted.current) return
+      setSaving(false)
+
+      if (result.ok) {
+        hydrateNotifications(result.value)
+        return
+      }
+
+      setPreference(key, previous)
+      setSaveError(true)
+    })
+  }, [hydrateNotifications, setPreference, toggle])
 
   return (
     <SettingsScreenLayout title={COPY.title} lede={COPY.lede} onBack={goBack}>
@@ -34,7 +163,8 @@ export function NotificationsScreen() {
           label={COPY.masterLabel}
           detail={COPY.masterDetail}
           value={state.notificationsEnabled}
-          onValueChange={() => toggle('notificationsEnabled')}
+          onValueChange={() => change('notificationsEnabled')}
+          disabled={saving}
         />
       </SectionPanel>
 
@@ -44,15 +174,15 @@ export function NotificationsScreen() {
           label={COPY.messages}
           detail={COPY.messagesDetail}
           value={state.notifyMessages}
-          onValueChange={() => toggle('notifyMessages')}
-          disabled={off}
+          onValueChange={() => change('notifyMessages')}
+          disabled={off || saving}
         />
         <SettingsToggleRow
           icon="mic"
           label={COPY.voiceNotes}
           detail={COPY.voiceNotesDetail}
           value={state.notifyVoiceNotes}
-          onValueChange={() => toggle('notifyVoiceNotes')}
+          onValueChange={() => change('notifyVoiceNotes')}
           disabled={off}
         />
         <SettingsToggleRow
@@ -60,15 +190,15 @@ export function NotificationsScreen() {
           label={COPY.newMemories}
           detail={COPY.newMemoriesDetail}
           value={state.notifyNewMemories}
-          onValueChange={() => toggle('notifyNewMemories')}
-          disabled={off}
+          onValueChange={() => change('notifyNewMemories')}
+          disabled={off || saving}
         />
         <SettingsToggleRow
           icon="sunrise"
           label={COPY.onThisDay}
           detail={COPY.onThisDayDetail}
           value={state.notifyOnThisDay}
-          onValueChange={() => toggle('notifyOnThisDay')}
+          onValueChange={() => change('notifyOnThisDay')}
           disabled={off}
         />
         <SettingsToggleRow
@@ -76,15 +206,15 @@ export function NotificationsScreen() {
           label={COPY.occasions}
           detail={COPY.occasionsDetail}
           value={state.notifyOccasions}
-          onValueChange={() => toggle('notifyOccasions')}
-          disabled={off}
+          onValueChange={() => change('notifyOccasions')}
+          disabled={off || saving}
         />
         <SettingsToggleRow
           icon="activity"
           label={COPY.partnerActivity}
           detail={COPY.partnerActivityDetail}
           value={state.notifyPartnerActivity}
-          onValueChange={() => toggle('notifyPartnerActivity')}
+          onValueChange={() => change('notifyPartnerActivity')}
           disabled={off}
         />
       </SectionPanel>
@@ -95,8 +225,8 @@ export function NotificationsScreen() {
           label={COPY.quietLabel}
           detail={COPY.quietDetail}
           value={state.quietHoursEnabled}
-          onValueChange={() => toggle('quietHoursEnabled')}
-          disabled={off}
+          onValueChange={() => change('quietHoursEnabled')}
+          disabled={off || saving}
         />
 
         {/*
@@ -129,17 +259,23 @@ export function NotificationsScreen() {
           icon="volume-2"
           label={COPY.sound}
           value={state.notificationSound}
-          onValueChange={() => toggle('notificationSound')}
+          onValueChange={() => change('notificationSound')}
           disabled={off}
         />
         <SettingsToggleRow
           icon="smartphone"
           label={COPY.vibration}
           value={state.notificationVibration}
-          onValueChange={() => toggle('notificationVibration')}
+          onValueChange={() => change('notificationVibration')}
           disabled={off}
         />
       </SectionPanel>
+
+      {saveError ? (
+        <Text variant="footnote" tone="error" accessibilityRole="alert">
+          {COPY.saveError}
+        </Text>
+      ) : null}
     </SettingsScreenLayout>
   )
 }

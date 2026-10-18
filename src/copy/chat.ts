@@ -18,7 +18,9 @@ export const CHAT_COPY = {
   home: {
     heading: 'Chat',
     subtitle: 'Your little conversations.',
-    /** The one thread this app has — see `ChatHeader.tsx`'s own "Sweatcha". */
+    defaultOwnName: 'Chandu',
+    defaultPartnerName: 'Sweatcha',
+    /** Demo fallback for the one thread when profile hydration is unavailable. */
     coupleName: 'Chandu & Sweatcha',
   },
   cards: {
@@ -59,12 +61,8 @@ export const CHAT_COPY = {
    * already owns exactly this kind of Chat-module copy (see the header
    * comment above).
    *
-   * "Sweatcha" stays baked directly into the strings rather than taking a name
-   * parameter: every other reference to the partner in this module is the
-   * same kind of hardcode (`ChatHeader`'s own "Sweatcha" `Text`, `Composer`'s
-   * "Message Sweatcha…" placeholder) because there is still no store-backed
-   * partner profile to read a name from — a template function would be
-   * inventing a flexibility nothing here can actually use yet.
+  * Partner-addressed strings take the hydrated pairing name. Demo names remain
+  * only as fallbacks for mock mode and pre-hydration rendering.
    *
    * The ellipses are the single typographic glyph (…), not three literal
    * periods, matching this app's own convention (see `Composer`'s
@@ -82,7 +80,8 @@ export const CHAT_COPY = {
     dividerToday: 'Today',
     presenceOnline: 'Online',
     presenceTyping: 'Typing…',
-    replyingToPartner: 'Replying to Sweatcha',
+    replyingToPartner: (name: string) => `Replying to ${name}`,
+    messagePlaceholder: (name: string) => `Message ${name}…`,
     recording: 'RECORDING…',
   },
   /**

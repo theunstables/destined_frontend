@@ -30,11 +30,13 @@ function permission(granted: boolean) {
   return { granted } as ImagePicker.MediaLibraryPermissionResponse
 }
 
-/** Everything but `uri`, `width` and `height` is optional and unread here. */
+/** Optional metadata mirrors what the native picker reports before upload. */
 const ASSET: ImagePicker.ImagePickerAsset = {
   uri: 'file:///tmp/photo.jpg',
   width: 1200,
   height: 900,
+  fileSize: 1024,
+  mimeType: 'image/jpeg',
 }
 
 const PICKED: ImagePicker.ImagePickerResult = { canceled: false, assets: [ASSET] }
@@ -86,20 +88,42 @@ describe('pickPhoto', () => {
     expect(result).toEqual({ ok: false, error: { code: 'CANCELLED' } })
   })
 
-  it('maps the first asset to uri, width and height', async () => {
+  it('maps the first asset and its upload metadata', async () => {
     picker.requestMediaLibraryPermissionsAsync.mockResolvedValue(permission(true))
     picker.launchImageLibraryAsync.mockResolvedValue(PICKED)
 
     const result = await service.pickPhoto()
 
-    // Exactly three fields: the asset also carries exif, fileName and mimeType,
-    // and none of it crosses the boundary. A screen that wanted `fileSize`
-    // would have to widen `PickedPhoto` deliberately rather than find it
-    // already smuggled through.
     expect(result).toEqual({
       ok: true,
-      value: { uri: 'file:///tmp/photo.jpg', width: 1200, height: 900 },
+      value: {
+        uri: 'file:///tmp/photo.jpg',
+        width: 1200,
+        height: 900,
+        fileSize: 1024,
+        mimeType: 'image/jpeg',
+      },
     })
+  })
+
+  it('rejects a photo larger than the API upload limit before returning it', async () => {
+    picker.requestMediaLibraryPermissionsAsync.mockResolvedValue(permission(true))
+    picker.launchImageLibraryAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ ...ASSET, fileSize: 25 * 1024 * 1024 + 1 }],
+    })
+
+    expect(await service.pickPhoto()).toEqual({ ok: false, error: { code: 'TOO_LARGE' } })
+  })
+
+  it('rejects a photo type the API cannot store', async () => {
+    picker.requestMediaLibraryPermissionsAsync.mockResolvedValue(permission(true))
+    picker.launchImageLibraryAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ ...ASSET, mimeType: 'image/gif' }],
+    })
+
+    expect(await service.pickPhoto()).toEqual({ ok: false, error: { code: 'UNSUPPORTED_TYPE' } })
   })
 
   it('reports an empty assets array as UNKNOWN rather than crashing', async () => {

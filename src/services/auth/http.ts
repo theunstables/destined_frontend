@@ -16,7 +16,7 @@
  * change a single screen: the extra state is real, but it is invisible.
  */
 import { requireApiUrl } from '@/config/env'
-import { get, post } from '@/services/http/client'
+import { get, postPublic, request } from '@/services/http/client'
 import { toAuthErrorCode } from '@/services/http/errors'
 import { clearTokens, getRefreshToken, setTokens } from '@/services/http/tokens'
 import { setCachedSession } from '@/services/auth/session'
@@ -56,7 +56,7 @@ export function createHttpAuthService(): AuthService {
     input: Credentials,
   ): Promise<Result<Session>> {
     try {
-      const response = await post<SessionResponse>(path, input)
+      const response = await postPublic<SessionResponse>(path, input)
 
       await setTokens({
         accessToken: response.accessToken,
@@ -94,7 +94,7 @@ export function createHttpAuthService(): AuthService {
      */
     async requestPasswordReset(input: EmailOnly): Promise<Result<null>> {
       try {
-        await post('/auth/password/forgot', input)
+        await postPublic('/auth/password/forgot', input)
         return ok(null)
       } catch (error) {
         return fail(error)
@@ -108,7 +108,7 @@ export function createHttpAuthService(): AuthService {
      */
     async resetPassword(input: ResetPassword): Promise<Result<null>> {
       try {
-        await post('/auth/password/reset', input)
+        await postPublic('/auth/password/reset', input)
         // Whatever was on this device is revoked server-side; do not keep it.
         await clearTokens()
         setCachedSession(null)
@@ -120,8 +120,21 @@ export function createHttpAuthService(): AuthService {
 
     async resendVerification(input: EmailOnly): Promise<Result<null>> {
       try {
-        await post('/auth/verify-email/resend', input)
+        await postPublic('/auth/verify-email/resend', input)
         return ok(null)
+      } catch (error) {
+        return fail(error)
+      }
+    },
+
+    async verifyEmail({ token }): Promise<Result<Session>> {
+      try {
+        const response = await request<{ user: Session }>('/auth/verify-email', {
+          method: 'GET',
+          query: { token },
+          authenticated: false,
+        })
+        return ok(response.data.user)
       } catch (error) {
         return fail(error)
       }
@@ -139,7 +152,7 @@ export function createHttpAuthService(): AuthService {
     async signOut(): Promise<void> {
       const refreshToken = getRefreshToken()
       try {
-        if (refreshToken) await post('/auth/logout', { refreshToken })
+        if (refreshToken) await postPublic('/auth/logout', { refreshToken })
       } catch {
         // Intentionally ignored — see above.
       } finally {

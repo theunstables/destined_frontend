@@ -11,6 +11,7 @@ export const SETTINGS_DATA_COPY = {
 
   usageGroup: 'On this device',
   totalPrefix: 'Using',
+  usageUnavailable: 'Device storage totals are not available in this build.',
 
   cacheGroup: 'Cache',
   clearCache: 'Clear cache',
@@ -35,5 +36,7 @@ export const SETTINGS_DATA_COPY = {
   exportGroup: 'Your copy',
   download: 'Download my data',
   downloadDetail: 'Every memory, message and date, as files you keep.',
-  downloadRequested: 'We will email you a link when your copy is ready.',
+  downloadPreparing: 'Preparing your private export…',
+  downloadReady: 'Your data export is ready.',
+  downloadError: 'Your data could not be exported. Try again.',
 } as const

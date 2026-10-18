@@ -6,6 +6,7 @@ import type {
   Partner,
   Profile,
   Result,
+  SpaceStatus,
 } from '@/services/pairing/types'
 
 /**
@@ -35,6 +36,15 @@ type MockOptions = {
 }
 
 export function createMockPairingService({ latencyMs = 600 }: MockOptions = {}): PairingService {
+  let profile: Profile = { name: 'Olivia' }
+  let space: SpaceStatus = {
+    coupleId: 'mock-couple',
+    name: 'Our little world',
+    shortName: 'Our world',
+    coverStyle: 'dawn',
+    status: 'connected',
+    partner: MOCK_PARTNER,
+  }
   let lifecycle: CoupleLifecycle = {
     status: 'connected',
     sharedWritesAllowed: true,
@@ -42,10 +52,17 @@ export function createMockPairingService({ latencyMs = 600 }: MockOptions = {}):
     unpairRequestedByMe: false,
   }
   return {
+    async getProfile() {
+      await wait(latencyMs)
+
+      return { ok: true, value: profile }
+    },
+
     async createProfile(input: Profile) {
       await wait(latencyMs)
 
-      return { ok: true, value: input }
+      profile = input
+      return { ok: true, value: profile }
     },
 
     async createInvite() {
@@ -92,14 +109,13 @@ export function createMockPairingService({ latencyMs = 600 }: MockOptions = {}):
     async getSpace() {
       await wait(latencyMs)
 
-      return {
-        ok: true,
-        value: {
-          coupleId: 'mock-couple',
-          coverStyle: 'dawn',
-          status: 'inviting',
-        },
-      }
+      return { ok: true, value: space }
+    },
+
+    async updateSpace(input) {
+      await wait(latencyMs)
+      space = { ...space, ...input, shortName: input.shortName.trim() || undefined }
+      return { ok: true, value: space }
     },
 
     async getLifecycle() {

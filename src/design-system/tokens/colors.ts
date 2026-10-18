@@ -21,12 +21,12 @@ export const palette = {
   ink600: '#494552',
 
   /** Background gradient, top stop. Figma 522:266. */
-  lavender50: '#FDF7FF',
+  lavender50: '#FDFBF7',
   /** Background gradient, bottom stop. Doubles as a soft raised surface. */
   lavender200: '#E8DDFF',
 
   /** Input fill. Sits between lavender50 and lavender200. Figma 522:77. */
-  lavender100: '#F8F1FB',
+  lavender100: '#F6F0FA',
 
   /** Divider and outline-button border. */
   greyLavender200: '#E6E0EA',
@@ -78,7 +78,7 @@ export const palette = {
   mintTint: '#DFF2E9',
 
   /** Page background glow, top centre. Figma 522:54. */
-  glowLavender: 'rgba(206, 189, 255, 0.4)',
+  glowLavender: 'rgba(79, 49, 155, 0.14)',
   /**
    * The transparent end of that glow.
    *
@@ -86,7 +86,7 @@ export const palette = {
    * RN interpolates toward transparent BLACK, which greys the middle of the
    * ramp. The fade has to be the same hue at zero alpha.
    */
-  glowLavenderFade: 'rgba(206, 189, 255, 0)',
+  glowLavenderFade: 'rgba(79, 49, 155, 0)',
 
   /**
    * Purple wash behind an illustration — the M00-S02 medallion, the M00-S04
@@ -184,11 +184,11 @@ export const midnightPalette = {
   paper400: '#9C94B4',
 
   /** Page ground. The darkest surface; every other one climbs from here. */
-  indigo900: '#12101C',
+  indigo900: '#170D22',
   /** Card fill — one step up from the page. */
-  indigo800: '#1C1930',
+  indigo800: '#21152F',
   /** Input fill, panel fill, and the `soft` button variant. */
-  indigo700: '#232038',
+  indigo700: '#261735',
   /** Raised lavender surface: the medallion, the bottom bar's active pill. */
   indigo600: '#322C52',
 
@@ -224,9 +224,9 @@ export const midnightPalette = {
   mintInk: '#7FE3B4',
 
   /** Page background glow, top centre. */
-  glowIndigo: 'rgba(150, 118, 255, 0.2)',
+  glowIndigo: 'rgba(206, 189, 255, 0.13)',
   /** Its transparent end — same hue at zero alpha, never `transparent`. */
-  glowIndigoFade: 'rgba(150, 118, 255, 0)',
+  glowIndigoFade: 'rgba(206, 189, 255, 0)',
 
   /**
    * Illustration wash. Lighter than the lavender palette's, not darker: a wash

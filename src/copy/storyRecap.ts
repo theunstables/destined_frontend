@@ -6,6 +6,7 @@
  * story before any of it is saved.
  */
 export const STORY_RECAP_COPY = {
+  eyebrow: 'Story Recap',
   heading: 'Our Story',
   lede: (date: string) => `It all started on ${date}.`,
   ledeUndated: 'Here is what you have told us so far.',

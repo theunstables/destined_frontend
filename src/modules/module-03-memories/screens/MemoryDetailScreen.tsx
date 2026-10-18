@@ -1,11 +1,12 @@
 import { Feather } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { useBackTo } from '@/hooks/useBackTo'
+import { ALBUMS_COPY } from '@/copy/albums'
 import { MEMORIES_COPY as COPY } from '@/copy/memories'
 import { AppScreenLayout } from '@/design-system/patterns/AppScreenLayout'
 import { MemoryVideoPlayer } from '@/design-system/patterns/MemoryVideoPlayer'
@@ -15,11 +16,14 @@ import { Button } from '@/design-system/primitives/Button'
 import { Card } from '@/design-system/primitives/Card'
 import { Text } from '@/design-system/primitives/Text'
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog'
+import { MemoryPrivateNotesCard } from '@/modules/module-03-memories/components/MemoryPrivateNotesCard'
+import { AlbumPicker } from '@/modules/module-03-memories/components/AlbumPicker'
 import { USE_SAMPLE_CONTENT } from '@/sample'
 import { SAMPLE_MEMORIES } from '@/sample/memories'
 import { memoriesService } from '@/services/memories'
-import type { Memory } from '@/services/memories/types'
+import type { Memory, MemoryAlbum } from '@/services/memories/types'
 import { formatDate } from '@/utils/formatStoryDate'
+import { useRemoteMediaPermission } from '@/hooks/useRemoteMediaPermission'
 
 /**
  * M03-S02 — Memory Detail. Stitch screen b5e4bef3.
@@ -42,11 +46,21 @@ export function MemoryDetailScreen() {
   const router = useRouter()
   const { theme } = useUnistyles()
   const { id } = useLocalSearchParams<{ id: string }>()
+  const albumAction = useRef(false)
 
   const [memory, setMemory] = useState<Memory | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [albums, setAlbums] = useState<MemoryAlbum[]>([])
+  const [albumPickerOpen, setAlbumPickerOpen] = useState(false)
+  const [albumLoading, setAlbumLoading] = useState(false)
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string>()
+  const [albumError, setAlbumError] = useState<string | null>(null)
+  const [albumSuccess, setAlbumSuccess] = useState<string | null>(null)
+  const photoMedia = useRemoteMediaPermission(memory?.photoUri ?? '')
+  const videoMedia = useRemoteMediaPermission(memory?.videoUri ?? '')
+  const voiceMedia = useRemoteMediaPermission(memory?.voiceUri ?? '')
 
   useEffect(() => {
     let cancelled = false
@@ -94,6 +108,50 @@ export function MemoryDetailScreen() {
     router.push(`/(app)/memories/edit/${memory.id}`)
   }, [memory, router])
 
+  const openAlbumPicker = useCallback(async () => {
+    setAlbumPickerOpen(true)
+    setAlbumLoading(true)
+    setAlbumError(null)
+    setAlbumSuccess(null)
+    const result = await memoriesService.listAlbums()
+    setAlbumLoading(false)
+    if (!result.ok) {
+      setAlbumError(ALBUMS_COPY.list.error)
+      return
+    }
+    setAlbums(result.value)
+  }, [])
+
+  const closeAlbumPicker = useCallback(() => {
+    if (selectedAlbumId) return
+    setAlbumPickerOpen(false)
+    setAlbumError(null)
+  }, [selectedAlbumId])
+
+  const createAlbum = useCallback(() => {
+    setAlbumPickerOpen(false)
+    router.push('/(app)/memories/albums/new')
+  }, [router])
+
+  const addToAlbum = useCallback(async (album: MemoryAlbum) => {
+    if (!memory || albumAction.current) return
+    albumAction.current = true
+    setSelectedAlbumId(album.id)
+    setAlbumError(null)
+    const result = await memoriesService.addToAlbum({
+      albumId: album.id,
+      memoryId: memory.id,
+    })
+    albumAction.current = false
+    setSelectedAlbumId(undefined)
+    if (!result.ok) {
+      setAlbumError(ALBUMS_COPY.picker.error)
+      return
+    }
+    setAlbumPickerOpen(false)
+    setAlbumSuccess(ALBUMS_COPY.picker.success(album.label))
+  }, [memory])
+
   const confirmDelete = useCallback(() => setConfirmingDelete(true), [])
   const cancelDelete = useCallback(() => setConfirmingDelete(false), [])
 
@@ -136,7 +194,7 @@ export function MemoryDetailScreen() {
         </Text>
       </View>
 
-      {memory.photoUri ? (
+      {memory.photoUri && photoMedia.allowed ? (
         <Image
           source={{ uri: memory.photoUri }}
           // Plain style object — Unistyles styles do not reach expo-image.
@@ -150,13 +208,15 @@ export function MemoryDetailScreen() {
           transition={200}
           testID="memory-detail-photo"
         />
-      ) : null}
+      ) : memory.photoUri ? <Button label="Download photo" onPress={photoMedia.allow} variant="soft" /> : null}
 
-      {memory.videoUri ? <MemoryVideoPlayer uri={memory.videoUri} testID="memory-detail-video" /> : null}
+      {memory.videoUri && videoMedia.allowed
+        ? <MemoryVideoPlayer uri={memory.videoUri} testID="memory-detail-video" />
+        : memory.videoUri ? <Button label="Download video" onPress={videoMedia.allow} variant="soft" /> : null}
 
-      {memory.voiceUri ? (
+      {memory.voiceUri && voiceMedia.allowed ? (
         <MemoryVoicePlayer uri={memory.voiceUri} fallbackDurationMs={memory.voiceDurationMs} />
-      ) : null}
+      ) : memory.voiceUri ? <Button label="Download voice note" onPress={voiceMedia.allow} variant="soft" /> : null}
 
       {memory.caption ? (
         <Text variant="body" tone="body">
@@ -180,6 +240,23 @@ export function MemoryDetailScreen() {
           {COPY.detail.addedBy(memory.addedBy)}
         </Text>
       ) : null}
+
+      <MemoryPrivateNotesCard memory={memory} onChange={setMemory} />
+
+      {albumSuccess ? (
+        <View accessibilityRole="alert" accessibilityLiveRegion="polite">
+          <Text variant="footnote" tone="brand">
+            {albumSuccess}
+          </Text>
+        </View>
+      ) : null}
+
+      <Button
+        label={ALBUMS_COPY.picker.heading}
+        onPress={openAlbumPicker}
+        variant="outline"
+        loading={albumLoading}
+      />
 
       <Button
         label={memory.favorite ? COPY.detail.unfavorite : COPY.detail.favorite}
@@ -208,6 +285,17 @@ export function MemoryDetailScreen() {
         onConfirm={deleteMemory}
         onCancel={cancelDelete}
         destructive
+      />
+
+      <AlbumPicker
+        visible={albumPickerOpen}
+        albums={albums}
+        loading={albumLoading}
+        selectedId={selectedAlbumId}
+        error={albumError}
+        onSelect={addToAlbum}
+        onCreate={createAlbum}
+        onCancel={closeAlbumPicker}
       />
     </AppScreenLayout>
   )

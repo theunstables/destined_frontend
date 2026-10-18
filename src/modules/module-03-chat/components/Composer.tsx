@@ -3,9 +3,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { IconButton } from '@/design-system/patterns/IconButton'
+import { CHAT_COPY } from '@/copy/chat'
 import { ReplyPreview } from '@/modules/module-03-chat/components/ReplyPreview'
 
 type Props = {
+  partnerName?: string
   value: string
   onChangeText: (v: string) => void
   onSend: (v: string) => void
@@ -33,6 +35,7 @@ type Props = {
  * something here to send", which is the one thing worth colouring.
  */
 export function Composer({
+  partnerName = CHAT_COPY.home.defaultPartnerName,
   value,
   onChangeText,
   onSend,
@@ -51,7 +54,9 @@ export function Composer({
     // surface that mounts it would otherwise have to remember to do this.
     // `Math.max` keeps a comfortable base gap on the phones that report none.
     <View style={[styles.dock, { paddingBottom: Math.max(insets.bottom, theme.spacing.md) }]}>
-      {replyTo && onCancelReply && <ReplyPreview body={replyTo} onCancel={onCancelReply} />}
+      {replyTo && onCancelReply && (
+        <ReplyPreview body={replyTo} partnerName={partnerName} onCancel={onCancelReply} />
+      )}
 
       <View style={styles.bar}>
         <IconButton icon="plus" label="Add attachment" onPress={onAttach} />
@@ -59,7 +64,7 @@ export function Composer({
         <TextInput
           value={value}
           onChangeText={onChangeText}
-          placeholder="Message Sweatcha…"
+          placeholder={CHAT_COPY.conversation.messagePlaceholder(partnerName)}
           placeholderTextColor={theme.colors.text.placeholder}
           accessibilityLabel="Message"
           multiline

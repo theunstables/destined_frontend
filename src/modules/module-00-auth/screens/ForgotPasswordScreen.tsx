@@ -11,7 +11,10 @@ import { authErrorMessage } from '@/copy/errors'
 import { FORGOT_PASSWORD_COPY as COPY } from '@/copy/forgotPassword'
 import { Button } from '@/design-system/primitives/Button'
 import { Text } from '@/design-system/primitives/Text'
+import { AuthFormError } from '@/modules/module-00-auth/components/AuthFormError'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
+import { FloatingInfoCard } from '@/modules/module-00-auth/components/FloatingInfoCard'
 import { emailOnlySchema, type EmailOnlyValues } from '@/modules/module-00-auth/state/authSchemas'
 import { authService } from '@/services/auth'
 
@@ -73,8 +76,13 @@ export function ForgotPasswordScreen() {
 
   return (
     <AuthScreenLayout onBack={back} centred>
-      <View style={styles.copy}>
-        <Text variant="h2" tone="heading" align="center">
+      <View
+        style={styles.copy}
+        accessible={Boolean(sentTo)}
+        accessibilityLiveRegion={sentTo ? 'polite' : 'none'}
+      >
+        <AuthEyebrow align="center">{COPY.eyebrow}</AuthEyebrow>
+        <Text variant="h2" tone="heading" align="center" accessibilityRole="header">
           {sentTo ? COPY.sentHeading : COPY.heading}
         </Text>
         <Text variant="body" tone="body" align="center">
@@ -94,11 +102,13 @@ export function ForgotPasswordScreen() {
           />
         )}
 
-        {formError ? (
-          <Text variant="footnote" tone="error" align="center">
-            {formError}
-          </Text>
-        ) : null}
+        <AuthFormError message={formError} />
+
+        <FloatingInfoCard
+          icon={sentTo ? 'mail' : 'lock'}
+          title={sentTo ? COPY.sentCardTitle : COPY.privacyTitle}
+          body={sentTo ? COPY.sentCardBody : COPY.privacyBody}
+        />
 
         <View style={styles.actions}>
           {sentTo ? (

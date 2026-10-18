@@ -7,9 +7,11 @@ import { BRAND } from '@/config/brand'
  * destroying it silently would strand them (spec §10).
  */
 export const INVITATION_SENT_COPY = {
+  eyebrow: 'Invitation Sent',
   heading: 'Your invitation is on its way ❤️',
-  lede: 'They can enter this code any time. It stays valid until you cancel it.',
-  codeLabel: 'YOUR UNIQUE CODE',
+  lede: 'Waiting securely for your person.',
+  codeLabel: 'WAITING FOR YOUR PERSON',
+  codeStatus: 'VALID UNTIL YOU CANCEL',
   shareAgain: 'Share Again',
   copy: 'Copy Code',
   cancel: 'Cancel Invitation',
@@ -28,6 +30,8 @@ export const INVITATION_SENT_COPY = {
     CODE_INVALID: 'Something went wrong. Try again.',
     CODE_EXPIRED: 'Something went wrong. Try again.',
     CANNOT_PAIR_WITH_SELF: 'Something went wrong. Try again.',
+    ALREADY_PAIRED: 'This account is already connected. Reopen the app to restore your space.',
+    EMAIL_NOT_VERIFIED: 'Verify your email before managing an invitation.',
     NETWORK: 'No connection. Check your network and try again.',
     UNKNOWN: 'Something went wrong. Try again.',
   },

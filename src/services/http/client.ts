@@ -343,6 +343,16 @@ export async function post<T>(path: string, body?: unknown): Promise<T> {
   return (await request<T>(path, { method: 'POST', body })).data
 }
 
+/**
+ * Public POST for authentication operations that must never attach, hydrate,
+ * or refresh an existing bearer session. In particular, logout is best-effort
+ * revocation of the supplied refresh token; trying to refresh before revoking
+ * it can rotate the very credential the request is attempting to end.
+ */
+export async function postPublic<T>(path: string, body?: unknown): Promise<T> {
+  return (await request<T>(path, { method: 'POST', body, authenticated: false })).data
+}
+
 export async function put<T>(path: string, body?: unknown): Promise<T> {
   return (await request<T>(path, { method: 'PUT', body })).data
 }

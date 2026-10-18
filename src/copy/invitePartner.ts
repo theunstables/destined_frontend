@@ -11,9 +11,11 @@ import { BRAND } from '@/config/brand'
  * to `text.body` per spec §5.
  */
 export const INVITE_PARTNER_COPY = {
+  eyebrow: 'Invite Partner',
   heading: 'Invite your person ❤️',
   lede: `Send them this code and they will land straight in your ${BRAND.name} space.`,
   codeLabel: 'YOUR UNIQUE CODE',
+  codeStatus: 'VALID UNTIL YOU CANCEL',
   share: 'Share Invite',
   copy: 'Copy Code',
   /** Interpolated with the code when the system share sheet opens. */
@@ -22,6 +24,8 @@ export const INVITE_PARTNER_COPY = {
     CODE_INVALID: 'Something went wrong. Try again.',
     CODE_EXPIRED: 'Something went wrong. Try again.',
     CANNOT_PAIR_WITH_SELF: 'Something went wrong. Try again.',
+    ALREADY_PAIRED: 'This account is already connected. Reopen the app to restore your space.',
+    EMAIL_NOT_VERIFIED: 'Verify your email before inviting your partner.',
     NETWORK: 'No connection. Check your network and try again.',
     UNKNOWN: 'Something went wrong. Try again.',
   },

@@ -1,8 +1,10 @@
 import { Feather } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
+import { useEffect, useState } from 'react'
 import { View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
+import { isMockMode } from '@/config/env'
 import { PLACES_COPY } from '@/copy/sharedPlaces'
 import { AppScreenLayout } from '@/design-system/patterns/AppScreenLayout'
 import { Avatar } from '@/design-system/primitives/Avatar'
@@ -12,6 +14,9 @@ import { ScreenIntro } from '@/modules/module-06-plans/components/ScreenIntro'
 import { SharedMap } from '@/modules/module-06-plans/components/SharedMap'
 import { SAMPLE_MEETUP, SAMPLE_PLACES } from '@/sample/plans'
 import type { ShareWindow } from '@/services/plans/types'
+import { sharedPlacesService } from '@/services/sharedPlaces'
+import { currentLocation } from '@/services/sharedPlaces/location'
+import type { SharedPlacesSnapshot } from '@/services/sharedPlaces/types'
 import { usePlansStore } from '@/state/plansStore'
 import { useRelationshipStore } from '@/state/relationshipStore'
 
@@ -40,39 +45,93 @@ export function SharedPlacesScreen() {
   const profile = useRelationshipStore((state) => state.profile)
   const partner = useRelationshipStore((state) => state.partner)
 
-  const myName = profile?.name ?? SAMPLE_PLACES.me.name
-  const partnerName = partner?.name ?? 'Sarah'
+  const [livePlaces, setLivePlaces] = useState<SharedPlacesSnapshot | null>(null)
+  const [locationError, setLocationError] = useState<string | null>(null)
 
-  const places = SAMPLE_PLACES
+  useEffect(() => {
+    let active = true
+    void sharedPlacesService.get().then(
+      (value) => {
+        if (!active) return
+        setLivePlaces(value)
+        if (!isMockMode && !value.me && sharingWindow !== null) setSharingWindow(null)
+      },
+      () => { if (active) setLocationError('Live locations could not be loaded.') },
+    )
+    return () => { active = false }
+  }, [setSharingWindow, sharingWindow])
+
+  const myName = profile?.name ?? (isMockMode ? SAMPLE_PLACES.me.name : 'You')
+  const partnerName = partner?.name ?? (isMockMode ? 'Sarah' : 'Partner')
+
+  const places = isMockMode ? SAMPLE_PLACES : null
   const sharing = sharingWindow !== null
+  const myLocation = isMockMode
+    ? { name: myName, coordinate: SAMPLE_PLACES.me.coordinate, detail: SAMPLE_PLACES.me.detail }
+    : livePlaces?.me
+      ? { name: livePlaces.me.name, coordinate: livePlaces.me.coordinate, detail: 'Location shared' }
+      : null
+  const partnerLocation = isMockMode
+    ? SAMPLE_PLACES.partner
+    : livePlaces?.partner
+      ? {
+          name: livePlaces.partner.name,
+          coordinate: livePlaces.partner.coordinate,
+          detail: 'Live location',
+          battery: livePlaces.partner.battery ?? 0,
+          activity: livePlaces.partner.activity ?? 'Location shared',
+          updatedMinutesAgo: Math.floor(livePlaces.partner.updatedSecondsAgo / 60),
+        }
+      : null
+  const mapCenter = partnerLocation?.coordinate ?? myLocation?.coordinate
+  const distanceLabel = isMockMode
+    ? SAMPLE_PLACES.distanceLabel
+    : livePlaces?.distanceKilometers == null
+      ? 'Waiting for both locations'
+      : `${livePlaces.distanceKilometers.toFixed(1)} km apart`
+
+  const changeSharing = async (window: ShareWindow | null) => {
+    setLocationError(null)
+    try {
+      if (window === null) {
+        setLivePlaces(await sharedPlacesService.pause())
+      } else {
+        const fix = isMockMode
+          ? { ...SAMPLE_PLACES.me.coordinate, accuracyMeters: null }
+          : await currentLocation()
+        setLivePlaces(await sharedPlacesService.share(fix, window))
+      }
+      setSharingWindow(window)
+    } catch (error) {
+      setLocationError(error instanceof Error ? error.message : 'Location sharing could not be changed.')
+    }
+  }
 
   /*
    * My own pin is included ONLY while sharing is on. See the header — this is
    * the line that makes the pause mean something.
    */
   const pins = [
-    ...(sharing
+    ...(sharing && myLocation
       ? [
           {
             id: 'me',
-            coordinate: places.me.coordinate,
-            title: myName,
-            snippet: places.me.detail,
+            coordinate: myLocation.coordinate,
+            title: myLocation.name,
+            snippet: myLocation.detail,
           },
         ]
       : []),
-    {
-      id: 'partner',
-      coordinate: places.partner.coordinate,
-      title: places.partner.name,
-      snippet: places.partner.detail,
-    },
-    {
+    ...(partnerLocation ? [{
+      id: 'partner', coordinate: partnerLocation.coordinate,
+      title: partnerLocation.name, snippet: partnerLocation.detail,
+    }] : []),
+    ...(isMockMode ? [{
       id: 'meetup',
       coordinate: SAMPLE_MEETUP.coordinate,
       title: SAMPLE_MEETUP.name,
       snippet: SAMPLE_MEETUP.walkLabel,
-    },
+    }] : []),
   ]
 
   return (
@@ -85,17 +144,25 @@ export function SharedPlacesScreen() {
         aside={PLACES_COPY.onlyYouTwo}
       />
 
-      <SharedMap
-        center={SAMPLE_MEETUP.coordinate}
-        pins={pins}
-        accessibilityLabel={PLACES_COPY.mapLabel(places.area)}
-      />
+      {mapCenter ? (
+        <SharedMap
+          center={isMockMode ? SAMPLE_MEETUP.coordinate : mapCenter}
+          pins={pins}
+          accessibilityLabel={PLACES_COPY.mapLabel(places?.area ?? 'shared locations')}
+        />
+      ) : (
+        <View style={styles.partnerCard}>
+          <Text variant="footnote" tone="body">
+            Turn on sharing to place your live location on the map.
+          </Text>
+        </View>
+      )}
 
       <View style={styles.areaRow}>
         <Feather name="navigation" size={12} color={theme.colors.text.placeholder} />
 
         <Text variant="countdown" tone="placeholder">
-          {places.area}
+          {places?.area ?? 'Shared live location'}
         </Text>
       </View>
 
@@ -110,18 +177,18 @@ export function SharedPlacesScreen() {
         </View>
 
         <Text variant="countdown" tone="brand">
-          {PLACES_COPY.apart(places.distanceLabel)}
+          {PLACES_COPY.apart(distanceLabel)}
         </Text>
       </View>
 
-      <View style={styles.partnerCard}>
+      {partnerLocation ? <View style={styles.partnerCard}>
         <Avatar name={partnerName} size={40} ring />
 
         <View style={styles.partnerFill}>
           <View style={styles.partnerTop}>
             <View style={styles.partnerTitleFill}>
               <Text variant="labelStrong" tone="heading">
-                {places.partner.name}
+                {partnerLocation.name}
               </Text>
             </View>
 
@@ -129,28 +196,32 @@ export function SharedPlacesScreen() {
           </View>
 
           <Text variant="footnote" tone="body">
-            {places.partner.detail}
+            {partnerLocation.detail}
           </Text>
 
           <View style={styles.partnerMeta}>
             <Feather name="battery" size={11} color={theme.colors.text.placeholder} />
 
             <Text variant="countdown" tone="placeholder">
-              {PLACES_COPY.battery(places.partner.battery)}
+              {partnerLocation.battery > 0 ? PLACES_COPY.battery(partnerLocation.battery) : 'Battery hidden'}
             </Text>
 
             <Feather name="navigation-2" size={11} color={theme.colors.text.placeholder} />
 
             <Text variant="countdown" tone="placeholder">
-              {places.partner.activity}
+              {partnerLocation.activity}
             </Text>
 
             <Text variant="countdown" tone="placeholder">
-              {PLACES_COPY.updated(places.partner.updatedMinutesAgo)}
+              {PLACES_COPY.updated(partnerLocation.updatedMinutesAgo)}
             </Text>
           </View>
         </View>
-      </View>
+      </View> : null}
+
+      {locationError ? (
+        <Text variant="footnote" tone="danger">{locationError}</Text>
+      ) : null}
 
       <View style={styles.chipRow}>
         <Chip label={PLACES_COPY.sendKiss} icon="heart" onPress={() => router.push('/(app)/chat')} />
@@ -179,7 +250,10 @@ export function SharedPlacesScreen() {
           </View>
 
           {sharing ? (
-            <Chip label={PLACES_COPY.expiring(places.expiresAtLabel)} tone="warning" />
+            <Chip
+              label={PLACES_COPY.expiring(places?.expiresAtLabel ?? 'SERVER CONTROLLED')}
+              tone="warning"
+            />
           ) : null}
         </View>
 
@@ -189,7 +263,7 @@ export function SharedPlacesScreen() {
               key={window}
               label={PLACES_COPY.windows[window]}
               selected={sharingWindow === window}
-              onPress={() => setSharingWindow(window)}
+              onPress={() => { void changeSharing(window) }}
             />
           ))}
         </View>
@@ -199,7 +273,7 @@ export function SharedPlacesScreen() {
             label={sharing ? PLACES_COPY.pause : PLACES_COPY.resume}
             icon={sharing ? 'pause-circle' : 'play-circle'}
             tone="brand"
-            onPress={() => setSharingWindow(sharing ? null : '1h')}
+            onPress={() => { void changeSharing(sharing ? null : '1h') }}
           />
 
           <Text variant="countdown" tone="placeholder">

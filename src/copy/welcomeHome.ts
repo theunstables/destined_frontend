@@ -9,6 +9,7 @@
  * and announcing one that does nothing is a promise the app cannot keep.
  */
 export const WELCOME_HOME_COPY = {
+  eyebrow: 'Your private world',
   heading: 'Welcome Home. ❤️',
   lede: 'Your story is waiting.',
   submit: 'Open Our Home',

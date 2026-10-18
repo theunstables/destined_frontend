@@ -1,5 +1,6 @@
 import type {
   MemoriesService,
+  MemoryAlbum,
   Memory,
   MemoryErrorCode,
   NewMemory,
@@ -25,15 +26,29 @@ type MockOptions = {
   seed?: Memory[]
   /** Test-only partner drafts, kept hidden until this client submits too. */
   partnerPrivateNotes?: Record<string, string>
+  albums?: MemoryAlbum[]
+  albumMemories?: Record<string, string[]>
 }
 
 export function createMockMemoriesService({
   latencyMs = 600,
   seed = [],
   partnerPrivateNotes = {},
+  albums = [],
+  albumMemories = {},
 }: MockOptions = {}): MemoriesService {
   const store = new Map<string, Memory>(seed.map((m) => [m.id, m]))
+  const albumStore = new Map<string, MemoryAlbum>(albums.map((album) => [album.id, album]))
+  const membershipStore = new Map<string, Set<string>>(
+    Object.entries(albumMemories).map(([albumId, memoryIds]) => [albumId, new Set(memoryIds)]),
+  )
   let counter = seed.length
+  let albumCounter = albums.length
+
+  const albumWithCount = (album: MemoryAlbum): MemoryAlbum => ({
+    ...album,
+    count: membershipStore.get(album.id)?.size ?? 0,
+  })
 
   return {
     async list() {
@@ -142,6 +157,65 @@ export function createMockMemoriesService({
       )
 
       return { ok: true, value: hits }
+    },
+
+    async listAlbums() {
+      await wait(latencyMs)
+      return { ok: true, value: [...albumStore.values()].map(albumWithCount) }
+    },
+
+    async createAlbum(input) {
+      await wait(latencyMs)
+      const label = input.label.trim()
+      const duplicate = [...albumStore.values()].some(
+        (album) => album.label.toLowerCase() === label.toLowerCase(),
+      )
+      if (duplicate) return fail('CONFLICT')
+
+      albumCounter += 1
+      const album: MemoryAlbum = {
+        id: `album-${albumCounter}`,
+        key: label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        label,
+        emoji: input.emoji,
+        coverUri: input.coverUri,
+        count: 0,
+      }
+      albumStore.set(album.id, album)
+      membershipStore.set(album.id, new Set())
+      return { ok: true, value: album }
+    },
+
+    async getAlbum({ id }) {
+      await wait(latencyMs)
+      const album = albumStore.get(id)
+      return album ? { ok: true, value: albumWithCount(album) } : fail('NOT_FOUND')
+    },
+
+    async listAlbumMemories({ albumId }) {
+      await wait(latencyMs)
+      if (!albumStore.has(albumId)) return fail('NOT_FOUND')
+      const ids = membershipStore.get(albumId) ?? new Set<string>()
+      return {
+        ok: true,
+        value: [...ids].map((id) => store.get(id)).filter((memory): memory is Memory => Boolean(memory)),
+      }
+    },
+
+    async addToAlbum({ albumId, memoryId }) {
+      await wait(latencyMs)
+      if (!albumStore.has(albumId) || !store.has(memoryId)) return fail('NOT_FOUND')
+      const ids = membershipStore.get(albumId) ?? new Set<string>()
+      ids.add(memoryId)
+      membershipStore.set(albumId, ids)
+      return { ok: true, value: undefined }
+    },
+
+    async removeFromAlbum({ albumId, memoryId }) {
+      await wait(latencyMs)
+      if (!albumStore.has(albumId)) return fail('NOT_FOUND')
+      membershipStore.get(albumId)?.delete(memoryId)
+      return { ok: true, value: undefined }
     },
   }
 }

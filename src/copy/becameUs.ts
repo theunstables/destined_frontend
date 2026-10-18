@@ -5,6 +5,7 @@
  * rather than leaving the user to guess which fields block the button.
  */
 export const BECAME_US_COPY = {
+  eyebrow: 'Became Us',
   heading: 'When did we become “us”?',
   lede: 'The moment your story became official.',
   dateLabel: 'The Date',

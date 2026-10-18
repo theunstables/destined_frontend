@@ -19,8 +19,12 @@ describe('RelationshipSetupScreen', () => {
   it('renders its blocks from copy', async () => {
     await renderScreen(<RelationshipSetupScreen />)
 
+    expect(screen.getByText(COPY.eyebrow)).toBeTruthy()
     expect(screen.getByText(COPY.heading)).toBeTruthy()
     expect(screen.getByText(COPY.lede)).toBeTruthy()
+    expect(screen.getByText(COPY.inviteBody)).toBeTruthy()
+    expect(screen.getByText(COPY.haveCodeBody)).toBeTruthy()
+    expect(screen.getByText(COPY.laterBody)).toBeTruthy()
   })
 
   it('names the product from BRAND rather than a typed literal', async () => {
@@ -63,6 +67,6 @@ describe('RelationshipSetupScreen', () => {
 
     await user.press(screen.getByRole('button', { name: COPY.later }))
 
-    expect(mockPush).toHaveBeenCalledWith('/(onboarding)/story-begins')
+    expect(mockPush).toHaveBeenCalledWith('/(onboarding)/pair-later')
   })
 })

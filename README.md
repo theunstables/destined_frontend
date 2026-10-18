@@ -1,100 +1,146 @@
-# Tales of Two — frontend
+# Tales of Two frontend
 
-A private app for a couple: exactly two paired people. Chat, a shared memory
-archive, and the story of how they got here.
+Expo and React Native frontend for LoveOS, a private shared space for exactly two paired people.
 
-**This repository is the Expo frontend only.** There is no server, database or
-API in it — every service is a typed boundary with an in-memory fake behind it.
-See [TECH.md](TECH.md#backend-integration--start-here) if you are wiring up a
-backend; that is the fastest way in.
+The active Java/Spring backend is the sibling project [destined_backend-main](../destined_backend-main/README.md). This frontend can run either against that API or entirely through local mock providers.
 
----
+## Runtime modes
+
+The provider mode is selected at build/startup from `EXPO_PUBLIC_API_URL`:
+
+- **Mock mode:** leave `EXPO_PUBLIC_API_URL` empty. Typed in-memory providers and sample content support local UI development without a server.
+- **API mode:** set `EXPO_PUBLIC_API_URL`. Supported services automatically use their HTTP providers, server state hydrates the app, and sample content is suppressed.
+
+Restart Expo after changing environment variables. Expo replaces `EXPO_PUBLIC_*` values at bundle time.
+
+Mock mode is a preview environment, not a persistence guarantee. API mode is the only mode intended to represent shared, durable couple data.
 
 ## Requirements
 
-| | |
+| Tool | Version |
 |---|---|
-| Node | 20 LTS or newer |
-| npm | 10+ (repo uses `package-lock.json` — don't switch to yarn/pnpm) |
-| Expo SDK | ~57 |
-| Android | Android Studio + an emulator, only for `npm run android` |
-| iOS | Xcode + a simulator, macOS only |
+| Node.js | 20 LTS or newer |
+| npm | 10 or newer; use the committed lockfile |
+| Expo SDK | 57 |
+| Backend for API mode | Java 21 LoveOS API plus PostgreSQL |
 
-You do **not** need Android Studio or Xcode to work on this. The web target
-runs everything and is the fastest loop.
+Android Studio is required only for local Android builds. Xcode and macOS are required for local iOS builds. The web target provides the fastest UI development loop.
 
 ## Getting started
 
-```bash
-npm install
-cp .env.example .env     # see TECH.md — safe to leave defaults while on mocks
-npm run web
-```
+1. Install the exact dependency tree with `npm ci`.
+2. Copy `.env.example` to `.env`.
+3. Choose a runtime mode:
+   - clear `EXPO_PUBLIC_API_URL` for mock mode;
+   - set it to the API origin for API mode.
+4. Start the target with `npm run web`, `npm run android`, or `npm run ios`.
 
-That serves the app at `http://localhost:8081`. If that port is busy Expo will
-ask to use another; pass one explicitly with `npx expo start --web --port 8090`.
+Typical API URLs:
+
+| Client | Development API URL |
+|---|---|
+| Web or iOS simulator | `http://localhost:4000` |
+| Android emulator | `http://10.0.2.2:4000` |
+| Physical device | `http://<development-computer-LAN-IP>:4000` |
+
+A physical device cannot use the computer's `localhost`.
+
+## Environment
+
+| Variable | Purpose |
+|---|---|
+| `EXPO_PUBLIC_API_URL` | API base URL without a trailing slash. Empty selects mock mode. |
+| `EXPO_PUBLIC_WS_URL` | Optional WebSocket endpoint. When empty in API mode, Chat derives `/ws` from the API URL. |
+
+These values are public and ship in the client bundle. Never store credentials, signing keys, or administrative tokens in frontend environment variables.
+
+## Integration status
+
+The following domains have matching typed mock and HTTP providers:
+
+- Authentication and account recovery
+- Profile, pairing, shared-space settings, pause/reactivate, and unpair lifecycle
+- Relationship story and onboarding
+- Home dashboard
+- Calendar and occasions
+- Memories, favorites, search, reciprocal notes, tags, albums, and On This Day
+- Media upload
+- Chat, reactions, pins, receipts, search, and realtime updates
+- Timeline
+- Daily Question
+- Repair Signal
+- Notification preferences and device registration
+- Account export and deletion lifecycle
+- Couple Plans workspace and deterministic trip planner
+- Memory video and voice attachments
+- User privacy and chat-behaviour preferences
+- Watch Together realtime presence, playback, reactions, and whispers
+- Expiring Shared Places locations on web
+
+The following remain externally gated or incomplete:
+
+- Native Shared Places capture, because `expo-location` could not be installed while the package registry was unavailable; API and browser capture are complete
+- OAuth/account linking
+- Push delivery and deep-link infrastructure
+- AI-generated prompts; trip planning currently uses a deterministic backend generator
+
+Capability boundaries are explicit in `src/config/capabilities.ts`; local previews must not present themselves as shared API state.
+
+## Authentication storage
+
+The HTTP token layer uses a storage-adapter boundary. The committed default is memory-only, so API-mode users are signed out on a cold start. A production native build must initialize that boundary with platform keychain storage, such as Expo SecureStore. Refresh tokens must never be placed in AsyncStorage or browser local storage.
+
+Mock-mode screen state may use browser local storage to support previews. That storage is disabled in API mode.
 
 ## Scripts
 
-| Command | What it does |
+| Command | Purpose |
 |---|---|
-| `npm start` | Expo dev server, pick a target from the menu |
-| `npm run web` | Web target — the fastest loop, no emulator needed |
-| `npm run android` | Build and run on a connected device/emulator |
-| `npm run ios` | Build and run on a simulator (macOS only) |
-| `npm test` | Full Jest suite — runs **twice**, once per theme |
-| `npm run test:watch` | Jest in watch mode |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run lint` | ESLint via `expo lint` |
+| `npm start` | Start Expo and select a target |
+| `npm run web` | Start the web development target |
+| `npm run android` | Build and run Android |
+| `npm run ios` | Build and run iOS on macOS |
+| `npm run typecheck` | Run TypeScript without emitting files |
+| `npm test` | Run Jest once under each theme |
+| `npm run test:watch` | Run Jest in watch mode |
+| `npm run lint` | Run Expo ESLint |
+| `npm run build:web` | Export the production web bundle |
+| `npm run predeploy` | Export web and prepare static-host fallback files |
+| `npm run deploy` | Publish `dist` through `gh-pages` |
 
-## Before you push
+Before release, all four verification commands must pass:
 
-```bash
-npm run typecheck && npm test
-```
+1. `npm run typecheck`
+2. `npm test`
+3. `npm run lint`
+4. `npm run build:web`
 
-Both must be clean. The suite is currently **178 suites / 2042 tests** and takes
-a few minutes, because every test runs under both themes (see below).
+If dependencies are incomplete, report the checks as blocked rather than passed.
 
-## How this project is laid out
+## Project structure
 
-```
+```text
 src/
-  app/              expo-router routes — file-based, one file per screen
-    (auth)/         sign in, sign up, reset          — no session yet
-    (onboarding)/   pairing and story capture        — session, no partner yet
-    (app)/          the real app                     — session + partner
-  modules/          feature modules, one folder each
-    module-00-auth  module-01-onboarding  module-02-home
-    module-03-chat  module-03-memories    module-05-profile
-  design-system/    tokens, primitives, patterns, themes
-  services/         the backend seam — see TECH.md
-  copy/             all user-facing strings, per module
-  state/            zustand stores
-  config/           the only place process.env is read
+  app/              Expo Router routes and route guards
+  modules/          Feature screens and components
+  design-system/    Themes, tokens, primitives, and shared patterns
+  services/         Typed provider boundaries, mocks, HTTP adapters, transport
+  state/            Zustand application state and hydration
+  config/           Environment and capability selection
+  copy/             User-facing strings
 ```
 
-Screens hold no strings and no colours. Copy lives in `src/copy/`, and every
-colour, size, spacing and duration is a token read off the theme.
+Screens consume service contracts rather than importing mocks or HTTP transports directly. Durable server state is hydrated into the feature stores after authentication and couple recovery.
 
-## Two things that surprise people
+## Release readiness
 
-**The suite runs twice.** There is a light theme (`lavender`) and a dark one
-(`midnight`), and Jest runs every test under each as separate projects. A
-failure reported against `midnight` is a dark-mode bug. This exists because the
-Unistyles Jest mock cannot switch themes at runtime, so the only way to test
-dark mode is to configure it first and run again.
+Production release still requires:
 
-**Nothing persists.** Reload and you are back to seed data. There is no storage
-layer yet — deliberately, until a real backend exists.
+- successful frontend typecheck, Jest, lint, and web export;
+- two-account, two-device testing against the real API;
+- camera, library, microphone, notification, and deep-link testing on iOS and Android;
+- screen-reader, large-text, reduced-motion, keyboard, theme, and small-screen review;
+- production PostgreSQL, SMTP, object storage, TLS, CORS, WebSocket, monitoring, backup, and secret configuration;
+- secure native token storage initialization.
 
-## Deployment
-
-`.github/workflows/deploy-web.yml` builds the web target and publishes it to
-GitHub Pages on push.
-
-## Further reading
-
-- [TECH.md](TECH.md) — stack, and the backend integration guide
-- [docs/build-status.md](docs/build-status.md) — what is built, what is mocked,
-  and what does not work yet
+See [docs/build-status.md](docs/build-status.md) for the implementation matrix, [TECH.md](TECH.md) for architecture, and [copilot-markdowns/DEPLOYMENT_RUNBOOK.md](copilot-markdowns/DEPLOYMENT_RUNBOOK.md) for deployment steps.

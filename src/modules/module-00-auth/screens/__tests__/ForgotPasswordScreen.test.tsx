@@ -24,8 +24,11 @@ describe('ForgotPasswordScreen', () => {
   it('renders the form state from copy', async () => {
     await renderScreen(<ForgotPasswordScreen />)
 
+    expect(screen.getByText(COPY.eyebrow)).toBeTruthy()
     expect(screen.getByText(COPY.heading)).toBeTruthy()
     expect(screen.getByText(COPY.lede)).toBeTruthy()
+    expect(screen.getByText(COPY.privacyTitle)).toBeTruthy()
+    expect(screen.getByText(COPY.privacyBody)).toBeTruthy()
     expect(screen.getByRole('button', { name: COPY.submit })).toBeTruthy()
     expect(screen.getByRole('button', { name: COPY.backToSignIn })).toBeTruthy()
   })
@@ -46,6 +49,9 @@ describe('ForgotPasswordScreen', () => {
 
     expect(await screen.findByText(COPY.sentHeading)).toBeTruthy()
     expect(screen.getByText(COPY.sentLede('a@example.com'))).toBeTruthy()
+    expect(screen.getByText(COPY.sentCardTitle)).toBeTruthy()
+    expect(screen.getByText(COPY.sentCardBody)).toBeTruthy()
+    expect(screen.queryByText(COPY.privacyTitle)).toBeNull()
     // An in-place swap, not a sixth screen: Figma names its only frame
     // "(Default)", implying a second state that was never drawn.
     expect(mockPush).not.toHaveBeenCalled()
@@ -85,6 +91,7 @@ describe('ForgotPasswordScreen', () => {
     await submit('offline@example.com')
 
     expect(await screen.findByText(AUTH_ERROR_COPY.NETWORK)).toBeTruthy()
+    expect(screen.getByRole('alert')).toHaveTextContent(AUTH_ERROR_COPY.NETWORK)
     expect(screen.queryByText(COPY.sentHeading)).toBeNull()
   })
 

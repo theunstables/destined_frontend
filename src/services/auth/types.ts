@@ -82,6 +82,7 @@ export type AuthService = {
    */
   resetPassword: (input: ResetPassword) => Promise<Result<null>>
   resendVerification: (input: EmailOnly) => Promise<Result<null>>
+  verifyEmail: (input: { token: string }) => Promise<Result<Session>>
   /**
    * Ends the session. Returns nothing on purpose.
    *

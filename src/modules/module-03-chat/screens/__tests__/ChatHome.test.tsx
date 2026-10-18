@@ -5,6 +5,8 @@ import { ChatHomeScreen } from '@/modules/module-03-chat/screens/ChatHomeScreen'
 import { useChatStore } from '@/modules/module-03-chat/state/chatStore'
 import { chatService } from '@/services/chat'
 import type { ChatEvent, Message } from '@/services/chat/types'
+import { useHomeStore } from '@/state/homeStore'
+import { useRelationshipStore } from '@/state/relationshipStore'
 import { renderScreen } from '@/test/renderScreen'
 
 /**
@@ -56,6 +58,8 @@ beforeEach(() => {
   // file. `ConversationFlow.test.tsx` resets its store the same bare way for
   // the same reason.
   useChatStore.getState().reset()
+  useHomeStore.getState().reset()
+  useRelationshipStore.getState().reset()
 })
 
 describe('ChatHomeScreen', () => {
@@ -69,6 +73,17 @@ describe('ChatHomeScreen', () => {
 
     await waitFor(() => expect(getByText('Chandu & Sweatcha')).toBeTruthy())
     expect(getByText(/Just trust me\./)).toBeTruthy()
+  })
+
+  it('uses hydrated profile and partner identities instead of demo names', async () => {
+    useRelationshipStore.getState().setProfile({ name: 'Olivia' })
+    useRelationshipStore.getState().setPartner({ id: 'partner-1', name: 'Jordan' })
+    service.listMessages.mockResolvedValue([message('m1', 'partner', 'See you soon.')])
+
+    const { getByText, queryByText } = await renderScreen(<ChatHomeScreen />)
+
+    await waitFor(() => expect(getByText('Olivia & Jordan')).toBeTruthy())
+    expect(queryByText('Chandu & Sweatcha')).toBeNull()
   })
 
   it('leaves a short preview exactly as written', async () => {

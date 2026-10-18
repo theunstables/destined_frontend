@@ -8,6 +8,7 @@ import { BRAND } from '@/config/brand'
  * a lie, and skipping was always allowed.
  */
 export const STORY_READY_COPY = {
+  eyebrow: 'Story Ready',
   heading: 'Your story is ready.',
   lede: `${BRAND.name} is ready to keep it with you.`,
   since: (date: string) => `Together since ${date}`,

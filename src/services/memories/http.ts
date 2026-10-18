@@ -19,11 +19,12 @@
  *    right fix is a paginated screen, not a bigger number.
  */
 import { requireApiUrl } from '@/config/env'
-import { del, get, post, put, request } from '@/services/http/client'
+import { del, get, patch, post, put, request } from '@/services/http/client'
 import { toMemoryErrorCode } from '@/services/http/errors'
 import { ensureRemoteUri } from '@/services/media'
 import type {
   MemoriesService,
+  MemoryAlbum,
   Memory,
   NewMemory,
   Result,
@@ -50,6 +51,15 @@ type MemoryResponse = {
   tags?: string[] | null
   favorite: boolean
   addedBy?: string | null
+}
+
+type AlbumResponse = {
+  id: string
+  key: string
+  label: string
+  emoji?: string | null
+  coverUri?: string | null
+  count: number
 }
 
 const ok = <T>(value: T): Result<T> => ({ ok: true, value })
@@ -83,6 +93,17 @@ function toMemory(row: MemoryResponse): Memory {
     tags: row.tags ?? [],
     favorite: row.favorite,
     addedBy: optional(row.addedBy),
+  }
+}
+
+function toAlbum(row: AlbumResponse): MemoryAlbum {
+  return {
+    id: row.id,
+    key: row.key,
+    label: row.label,
+    emoji: optional(row.emoji),
+    coverUri: optional(row.coverUri),
+    count: row.count,
   }
 }
 
@@ -127,10 +148,17 @@ export function createHttpMemoriesService(): MemoriesService {
         const videoUri = await ensureRemoteUri(input.videoUri)
         const voiceUri = await ensureRemoteUri(input.voiceUri)
         const created = await post<MemoryResponse>('/memories', {
-          ...input,
+          title: input.title,
+          date: input.date,
+          caption: input.caption,
+          location: input.location,
+          note: input.note,
           photoUri,
           videoUri,
           voiceUri,
+          voiceDurationMs: input.voiceDurationMs,
+          tags: input.tags,
+          favorite: input.favorite,
         })
         return ok(toMemory(created))
       } catch (error) {
@@ -144,11 +172,18 @@ export function createHttpMemoriesService(): MemoriesService {
         const photoUri = await ensureRemoteUri(edit.photoUri)
         const videoUri = await ensureRemoteUri(edit.videoUri)
         const voiceUri = await ensureRemoteUri(edit.voiceUri)
-        const updated = await put<MemoryResponse>(`/memories/${encodeURIComponent(id)}`, {
-          ...edit,
+        const updated = await patch<MemoryResponse>(`/memories/${encodeURIComponent(id)}`, {
+          title: edit.title,
+          date: edit.date,
+          caption: edit.caption,
+          location: edit.location,
+          note: edit.note,
           photoUri,
           videoUri,
           voiceUri,
+          voiceDurationMs: edit.voiceDurationMs,
+          tags: edit.tags,
+          favorite: edit.favorite,
         })
         return ok(toMemory(updated))
       } catch (error) {
@@ -214,6 +249,79 @@ export function createHttpMemoriesService(): MemoriesService {
           limit: PAGE_SIZE,
         })
         return ok(rows.map(toMemory))
+      } catch (error) {
+        return fail(error)
+      }
+    },
+
+    async listAlbums(): Promise<Result<MemoryAlbum[]>> {
+      try {
+        const rows = await get<AlbumResponse[]>('/memories/albums')
+        return ok(rows.map(toAlbum))
+      } catch (error) {
+        return fail(error)
+      }
+    },
+
+    async createAlbum(input): Promise<Result<MemoryAlbum>> {
+      try {
+        const coverUrl = await ensureRemoteUri(input.coverUri)
+        const row = await post<AlbumResponse>('/memories/albums', {
+          label: input.label,
+          emoji: input.emoji,
+          coverUrl,
+        })
+        return ok(toAlbum(row))
+      } catch (error) {
+        return fail(error)
+      }
+    },
+
+    async getAlbum(input): Promise<Result<MemoryAlbum>> {
+      try {
+        const row = await get<AlbumResponse>(`/memories/albums/${encodeURIComponent(input.id)}`)
+        return ok(toAlbum(row))
+      } catch (error) {
+        return fail(error)
+      }
+    },
+
+    async listAlbumMemories(input): Promise<Result<Memory[]>> {
+      try {
+        const items: Memory[] = []
+        let cursor: string | undefined
+        for (let page = 0; page < MAX_PAGES; page += 1) {
+          const response = await request<MemoryResponse[]>('/memories', {
+            query: { albumId: input.albumId, cursor, limit: PAGE_SIZE },
+          })
+          items.push(...response.data.map(toMemory))
+          const next = response.meta.nextCursor
+          if (!next) break
+          cursor = next
+        }
+        return ok(items)
+      } catch (error) {
+        return fail(error)
+      }
+    },
+
+    async addToAlbum(input): Promise<Result<void>> {
+      try {
+        await put(
+          `/memories/albums/${encodeURIComponent(input.albumId)}/memories/${encodeURIComponent(input.memoryId)}`,
+        )
+        return ok(undefined)
+      } catch (error) {
+        return fail(error)
+      }
+    },
+
+    async removeFromAlbum(input): Promise<Result<void>> {
+      try {
+        await del(
+          `/memories/albums/${encodeURIComponent(input.albumId)}/memories/${encodeURIComponent(input.memoryId)}`,
+        )
+        return ok(undefined)
       } catch (error) {
         return fail(error)
       }

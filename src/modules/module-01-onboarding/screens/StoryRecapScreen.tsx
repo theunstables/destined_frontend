@@ -9,7 +9,9 @@ import { STORY_RECAP_COPY as COPY } from '@/copy/storyRecap'
 import { Button } from '@/design-system/primitives/Button'
 import { Card } from '@/design-system/primitives/Card'
 import { Text } from '@/design-system/primitives/Text'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
+import { FloatingInfoCard } from '@/modules/module-00-auth/components/FloatingInfoCard'
 import { storyService } from '@/services/story'
 import { useStoryStore } from '@/state/storyStore'
 import { formatDate, formatStoryDate } from '@/utils/formatStoryDate'
@@ -88,6 +90,7 @@ export function StoryRecapScreen() {
   return (
     <AuthScreenLayout onBack={back}>
       <View style={styles.copy}>
+        <AuthEyebrow align="center">{COPY.eyebrow}</AuthEyebrow>
         <Text variant="h1" tone="heading" align="center">
           {COPY.heading}
         </Text>
@@ -138,9 +141,12 @@ export function StoryRecapScreen() {
         </Text>
 
         {error ? (
-          <Text variant="footnote" tone="error" align="center">
-            {error}
-          </Text>
+          <FloatingInfoCard
+            icon="alert-circle"
+            title="Story not saved"
+            body={error}
+            tone="error"
+          />
         ) : null}
 
         <Button label={COPY.submit} onPress={submit} loading={saving} />
@@ -151,7 +157,7 @@ export function StoryRecapScreen() {
 
 const styles = StyleSheet.create((theme) => ({
   copy: {
-    gap: theme.spacing.xs,
+    gap: theme.spacing.sm,
     paddingBottom: theme.spacing.xxxl,
   },
   list: {

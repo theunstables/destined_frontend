@@ -8,10 +8,14 @@ import { BRAND } from '@/config/brand'
  * file.
  */
 export const RELATIONSHIP_SETUP_COPY = {
+  eyebrow: 'Relationship Setup',
   heading: "Now let's create your space together.",
-  lede: `${BRAND.name} becomes something special when you share it with your person.`,
+  lede: `Choose how you want to connect in ${BRAND.name}.`,
   invite: 'Invite My Partner',
+  inviteBody: 'Create a private invitation.',
   haveCode: 'I Have a Partner Code',
+  haveCodeBody: 'Enter their six characters.',
   /** Drawn as `#7A7583`; normalised to `text.body` per spec §5. */
-  later: 'Do this later',
+  later: 'Do This Later',
+  laterBody: 'Connect from Profile later.',
 } as const

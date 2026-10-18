@@ -12,6 +12,8 @@ import { Text } from '@/design-system/primitives/Text'
 import { clockTime } from '@/modules/module-03-chat/clockTime'
 import { truncateWords } from '@/modules/module-03-chat/truncate'
 import { useChatStore } from '@/modules/module-03-chat/state/chatStore'
+import { useHomeStore } from '@/state/homeStore'
+import { useRelationshipStore } from '@/state/relationshipStore'
 
 /** How much of the newest message's body the row preview shows. */
 const PREVIEW_MAX = 34
@@ -36,6 +38,12 @@ export function ChatHomeScreen() {
   const messages = useChatStore((state) => state.messages)
   const load = useChatStore((state) => state.load)
   const loaded = useRef(false)
+  const ownName = useRelationshipStore((state) => state.profile?.name)
+    ?? COPY.home.defaultOwnName
+  const partnerName = useRelationshipStore((state) => state.partner?.name)
+    ?? COPY.home.defaultPartnerName
+  const dashboardCoupleName = useHomeStore((state) => state.dashboard?.coupleName)
+  const coupleName = dashboardCoupleName ?? `${ownName} & ${partnerName}`
 
   useEffect(() => {
     // Guards the effect itself, not just the store: `load()` already dedupes
@@ -75,7 +83,7 @@ export function ChatHomeScreen() {
       {newest ? (
         <PressableScale
           onPress={openConversation}
-          accessibilityLabel={`Open conversation with ${COPY.home.coupleName}`}
+          accessibilityLabel={`Open conversation with ${coupleName}`}
         >
           <Card>
             <View style={styles.row}>
@@ -83,16 +91,16 @@ export function ChatHomeScreen() {
                   one couple, not two contacts, and the ring is what keeps the
                   second one legible where it crosses the first. */}
               <View style={styles.avatarPair}>
-                <Avatar name="Chandu" size={40} />
+                <Avatar name={ownName} size={40} />
                 <View style={styles.avatarOverlap}>
-                  <Avatar name="Sweatcha" size={40} />
+                  <Avatar name={partnerName} size={40} />
                 </View>
               </View>
 
               <View style={styles.body}>
                 <View style={styles.identityRow}>
                   <Text variant="labelStrong" tone="heading">
-                    {COPY.home.coupleName}
+                    {coupleName}
                   </Text>
                   <View style={styles.spacer} />
                   <Text variant="caption" tone="muted">

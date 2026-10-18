@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -11,6 +12,8 @@ import { Avatar } from '@/design-system/primitives/Avatar'
 import { Text } from '@/design-system/primitives/Text'
 import { CallControls } from '@/modules/module-03-chat/components/CallControls'
 import { clock } from '@/modules/module-03-chat/components/VoiceNotePlayer'
+import { useRelationshipStore } from '@/state/relationshipStore'
+import { useCallSession } from '@/modules/module-03-chat/hooks/useCallSession'
 
 /** How often the elapsed-call readout ticks. */
 const TICK_MS = 1000
@@ -36,18 +39,28 @@ export function VoiceMomentScreen() {
   const insets = useSafeAreaInsets()
   const [elapsedMs, setElapsedMs] = useState(0)
   const [muted, setMuted] = useState(false)
+  const { callId = 'invalid-call', incoming } = useLocalSearchParams<{ callId?: string; incoming?: string }>()
+  const call = useCallSession(callId, 'voice', incoming === 'true')
+  const partnerName = useRelationshipStore((state) => state.partner?.name)
+    ?? CHAT_COPY.home.defaultPartnerName
 
   // Cleared on unmount, same lesson `VoiceNoteRecorder` already learned the
   // hard way (Task 9's review finding): leaving unmounts this screen
   // from underneath the interval, and a leaked timer would keep ticking a
   // state setter on an unmounted component.
   useEffect(() => {
+    if (call.state !== 'connected') return
     const timer = setInterval(() => {
       setElapsedMs((previous) => previous + TICK_MS)
     }, TICK_MS)
 
     return () => clearInterval(timer)
-  }, [])
+  }, [call.state])
+
+  const end = () => {
+    call.end()
+    onEnd()
+  }
 
   return (
     <View style={[styles.page, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
@@ -58,22 +71,26 @@ export function VoiceMomentScreen() {
       <View style={styles.identity}>
         {/* Sized up from the header's own default — this is the whole
             screen's focal point, not a row accessory. */}
-        <Avatar name="Sweatcha" size={128} />
+        <Avatar name={partnerName} size={128} />
         {/* `wordmark` (20/600), not `h2` (34/700): the frame draws the
             partner's name at 20pt semibold (node 3391:919), the same size
             `ChatHeader` already gives it. The 128pt avatar is this screen's
             focal point — the name is its caption, not a page heading. */}
         <Text variant="wordmark" tone="heading">
-          Sweatcha
+          {partnerName}
         </Text>
         {/* "Together for 08:42" (node 3391:921, 16/400 = `label`) — labelled,
             as the frame draws it, not the bare clock this screen shipped
             with. */}
         <Text variant="label" tone="placeholder">
-          {`${CHAT_COPY.moments.togetherForPrefix} ${clock(elapsedMs)}`}
+          {call.state === 'connected'
+            ? `${CHAT_COPY.moments.togetherForPrefix} ${clock(elapsedMs)}`
+            : call.state === 'calling' ? 'Calling…' : 'Call ended'}
         </Text>
         <Text variant="label" tone="muted" align="center">
-          {CHAT_COPY.moments.voiceCaption}
+          {call.state === 'connected'
+            ? 'Signaling connected. Audio starts when a media provider is configured.'
+            : CHAT_COPY.moments.voiceCaption}
         </Text>
       </View>
 
@@ -98,7 +115,7 @@ export function VoiceMomentScreen() {
         <CallControls
           muted={muted}
           onToggleMute={() => setMuted((was) => !was)}
-          onEnd={onEnd}
+          onEnd={end}
         />
       </View>
     </View>

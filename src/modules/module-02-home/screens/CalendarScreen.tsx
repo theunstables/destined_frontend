@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Pressable, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -13,7 +13,11 @@ import { Text } from '@/design-system/primitives/Text'
 import { buildComingUp, dateInDays } from '@/modules/module-02-home/comingUp'
 import { USE_SAMPLE_CONTENT } from '@/sample'
 import { SAMPLE_HOME } from '@/sample/home'
+import { calendarService } from '@/services/calendar'
+import type { CalendarEvent } from '@/services/calendar/types'
+import { useCalendarStore } from '@/state/calendarStore'
 import { useStoryStore } from '@/state/storyStore'
+import { parseCalendarDate } from '@/utils/dateUtils'
 
 export const MONTHS = [
   'January',
@@ -47,6 +51,13 @@ export function monthGrid(year: number, month: number): (number | null)[] {
   return cells
 }
 
+function eventDayInMonth(event: CalendarEvent, year: number, month: number): number | null {
+  const date = parseCalendarDate(event.date)
+  if (!date || date.month !== month + 1) return null
+  if (!event.repeatsAnnually && date.year !== year) return null
+  return date.day
+}
+
 /**
  * The couple's calendar.
  *
@@ -64,6 +75,10 @@ export function CalendarScreen() {
   const router = useRouter()
   const back = useBackTo('/(app)/home')
   const keyDates = useStoryStore((state) => state.keyDates)
+  const calendarEvents = useCalendarStore((state) => state.events)
+  const hydrated = useCalendarStore((state) => state.hydrated)
+  const hydrateCalendar = useCalendarStore((state) => state.hydrate)
+  const [loadError, setLoadError] = useState(false)
 
   const today = new Date()
   const [offset, setOffset] = useState(0)
@@ -72,15 +87,44 @@ export function CalendarScreen() {
   const year = shown.getFullYear()
   const month = shown.getMonth()
 
-  const rows = buildComingUp(keyDates)
+  const loadCalendar = useCallback(async () => {
+    setLoadError(false)
+    const [eventsResult, upcomingResult] = await Promise.all([
+      calendarService.list(),
+      calendarService.upcoming(),
+    ])
+
+    if (!eventsResult.ok) {
+      setLoadError(true)
+      return
+    }
+
+    hydrateCalendar(eventsResult.value, upcomingResult.ok ? upcomingResult.value : [])
+  }, [hydrateCalendar])
+
+  useEffect(() => {
+    if (!hydrated) void loadCalendar()
+  }, [hydrated, loadCalendar])
+
+  const storyRows = buildComingUp(keyDates)
+  const rows = calendarEvents.length > 0
+    ? storyRows.filter((row) => !row.sample)
+    : storyRows
 
   const events = rows.map((row) => ({ ...row, on: dateInDays(row.days, today) }))
-  const inMonth = events.filter((e) => e.on.getFullYear() === year && e.on.getMonth() === month)
-  const markedDays = new Set(inMonth.map((e) => e.on.getDate()))
+  const storyInMonth = events.filter((e) => e.on.getFullYear() === year && e.on.getMonth() === month)
+  const providerInMonth = calendarEvents
+    .map((event) => ({ event, day: eventDayInMonth(event, year, month) }))
+    .filter((row): row is { event: CalendarEvent; day: number } => row.day !== null)
+  const markedDays = new Set([
+    ...storyInMonth.map((e) => e.on.getDate()),
+    ...providerInMonth.map((e) => e.day),
+  ])
 
   const reminders = USE_SAMPLE_CONTENT ? SAMPLE_HOME.littleThings : []
 
-  const add = useCallback(() => router.push('/(app)/memories/new'), [router])
+  const addDate = useCallback(() => router.push('/(app)/calendar-events/new'), [router])
+  const addMemory = useCallback(() => router.push('/(app)/memories/new'), [router])
   const openOccasion = useCallback(
     // Object form: expo-router types the dynamic segment as a param here and
     // handles the encoding, which a template string does not.
@@ -93,37 +137,41 @@ export function CalendarScreen() {
   return (
     <AppScreenLayout activeTab="home" onBack={back}>
       <View style={styles.head}>
-        <Text variant="caption" tone="body">
+        <Text variant="caption" tone="brand">
           {COPY.eyebrow}
         </Text>
-        <Text variant="h2" tone="heading">
+        <Text variant="display" tone="heading">
           {COPY.title}
+        </Text>
+        <Text variant="body" tone="body">
+          {COPY.lede}
         </Text>
       </View>
 
       <Card>
         <View style={styles.monthBar}>
-          <Pressable
-            onPress={() => setOffset((o) => o - 1)}
-            accessibilityRole="button"
-            accessibilityLabel={COPY.prev}
-            style={styles.arrow}
-          >
-            <Feather name="chevron-left" size={18} color={theme.colors.brand.primary} />
-          </Pressable>
-
           <Text variant="labelStrong" tone="heading">
             {COPY.monthLabel(MONTHS[month], year)}
           </Text>
 
-          <Pressable
-            onPress={() => setOffset((o) => o + 1)}
-            accessibilityRole="button"
-            accessibilityLabel={COPY.next}
-            style={styles.arrow}
-          >
-            <Feather name="chevron-right" size={18} color={theme.colors.brand.primary} />
-          </Pressable>
+          <View style={styles.monthNav}>
+            <Pressable
+              onPress={() => setOffset((o) => o - 1)}
+              accessibilityRole="button"
+              accessibilityLabel={COPY.prev}
+              style={styles.arrow}
+            >
+              <Feather name="chevron-left" size={18} color={theme.colors.brand.primary} />
+            </Pressable>
+            <Pressable
+              onPress={() => setOffset((o) => o + 1)}
+              accessibilityRole="button"
+              accessibilityLabel={COPY.next}
+              style={styles.arrow}
+            >
+              <Feather name="chevron-right" size={18} color={theme.colors.brand.primary} />
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.week}>
@@ -143,7 +191,13 @@ export function CalendarScreen() {
             return (
               <View key={i} style={styles.cell}>
                 {day === null ? null : (
-                  <View style={[styles.day, isToday ? styles.dayToday : null]}>
+                  <View
+                    style={[
+                      styles.day,
+                      markedDays.has(day) ? styles.dayEvent : null,
+                      isToday ? styles.dayToday : null,
+                    ]}
+                  >
                     <Text
                       variant="footnote"
                       tone={isToday ? 'onPrimary' : 'heading'}
@@ -163,22 +217,55 @@ export function CalendarScreen() {
             )
           })}
         </View>
+
+        <View style={styles.legend}>
+          <View style={styles.legendDot} />
+          <Text variant="caption" tone="body">
+            {COPY.eventLegend}
+          </Text>
+        </View>
       </Card>
+
+      {loadError ? (
+        <Card>
+          <View accessibilityRole="alert" style={styles.feedback}>
+            <Feather name="wifi-off" size={18} color={theme.colors.feedback.error} />
+            <Text variant="footnote" tone="body">
+              {COPY.error}
+            </Text>
+          </View>
+          <Button label={COPY.retry} onPress={loadCalendar} variant="soft" />
+        </Card>
+      ) : !hydrated ? (
+        <Text variant="footnote" tone="body">
+          {COPY.loading}
+        </Text>
+      ) : null}
 
       <View style={styles.section}>
         <Text variant="labelStrong" tone="heading">
           {COPY.agendaLabel}
         </Text>
 
-        {inMonth.length === 0 ? (
+        {storyInMonth.length === 0 && providerInMonth.length === 0 ? (
           <Card>
             <Text variant="footnote" tone="body">
               {COPY.agendaEmpty}
             </Text>
-            <Button label={COPY.addDate} onPress={add} variant="soft" />
+            <Button label={COPY.addDate} onPress={addDate} variant="soft" />
           </Card>
         ) : (
-          inMonth.map((event, i) => {
+          [...providerInMonth.map(({ event, day }) => ({
+            key: event.id,
+            label: event.title,
+            day,
+            detail: event.location,
+          })), ...storyInMonth.map((event) => ({
+            key: event.key,
+            label: event.label,
+            day: event.on.getDate(),
+            detail: undefined,
+          }))].map((event, i) => {
             // Accents cycle by position, per the palette's own note.
             const accent = theme.colors.accents[i % theme.colors.accents.length]
 
@@ -193,7 +280,7 @@ export function CalendarScreen() {
                   <View style={styles.row}>
                     <View style={[styles.tile, { backgroundColor: accent.soft }]}>
                       <Text variant="caption" tone="heading" align="center">
-                        {event.on.getDate()}
+                        {event.day}
                       </Text>
                     </View>
 
@@ -202,7 +289,7 @@ export function CalendarScreen() {
                         {event.label}
                       </Text>
                       <Text variant="caption" tone="body">
-                        {MONTHS[event.on.getMonth()]} {event.on.getDate()}
+                        {event.detail ?? `${MONTHS[month]} ${event.day}`}
                       </Text>
                     </View>
 
@@ -225,7 +312,7 @@ export function CalendarScreen() {
             <Text variant="footnote" tone="body">
               {COPY.remindersEmpty}
             </Text>
-            <Button label={COPY.writeNote} onPress={add} variant="soft" />
+            <Button label={COPY.writeNote} onPress={addMemory} variant="soft" />
           </Card>
         ) : (
           reminders.map((thing) => (
@@ -255,11 +342,19 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  monthNav: {
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+  },
   arrow: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border.subtle,
+    borderRadius: theme.radii.field,
+    backgroundColor: theme.colors.surface.field,
   },
   week: {
     flexDirection: 'row',
@@ -283,6 +378,9 @@ const styles = StyleSheet.create((theme) => ({
   dayToday: {
     backgroundColor: theme.colors.brand.primary,
   },
+  dayEvent: {
+    backgroundColor: theme.colors.surface.soft,
+  },
   dot: {
     width: 4,
     height: 4,
@@ -292,6 +390,23 @@ const styles = StyleSheet.create((theme) => ({
   },
   dotOnToday: {
     backgroundColor: theme.colors.text.onPrimary,
+  },
+  legend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.sm,
+  },
+  legendDot: {
+    width: 7,
+    height: 7,
+    borderRadius: theme.radii.pill,
+    backgroundColor: theme.colors.accents[0].ink,
+  },
+  feedback: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
   },
   section: {
     gap: theme.spacing.md,

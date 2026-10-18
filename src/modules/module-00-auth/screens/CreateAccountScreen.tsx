@@ -15,6 +15,8 @@ import { SocialButton } from '@/design-system/patterns/SocialButton'
 import { Button } from '@/design-system/primitives/Button'
 import { Divider } from '@/design-system/primitives/Divider'
 import { Text } from '@/design-system/primitives/Text'
+import { AuthFormError } from '@/modules/module-00-auth/components/AuthFormError'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
 import { PasswordRequirements } from '@/modules/module-00-auth/components/PasswordRequirements'
 import { signUpSchema, type SignUpValues } from '@/modules/module-00-auth/state/authSchemas'
@@ -53,7 +55,13 @@ export function CreateAccountScreen() {
 
     // A taken address belongs on the field that caused it, not in a form-level
     // banner the user has to connect back to an input themselves.
-    setError(result.error.code === 'EMAIL_ALREADY_EXISTS' ? 'email' : 'root', {
+    const field = result.error.code === 'EMAIL_ALREADY_EXISTS'
+      ? 'email'
+      : result.error.code === 'WEAK_PASSWORD'
+        ? 'password'
+        : 'root'
+
+    setError(field, {
       message: authErrorMessage(result.error.code),
     })
   })
@@ -63,6 +71,7 @@ export function CreateAccountScreen() {
   return (
     <AuthScreenLayout onBack={back}>
       <View style={styles.copy}>
+        <AuthEyebrow>{COPY.eyebrow}</AuthEyebrow>
         {/*
           One Text with a newline, NOT one Text per line. As separate children of
           a gapped container the two lines sat 52pt apart (40pt line height plus
@@ -98,11 +107,7 @@ export function CreateAccountScreen() {
 
         <PasswordRequirements value={password} />
 
-        {formState.errors.root?.message ? (
-          <Text variant="footnote" tone="error" align="center">
-            {formState.errors.root.message}
-          </Text>
-        ) : null}
+        <AuthFormError message={formState.errors.root?.message} />
 
         <Button label={COPY.submit} onPress={submit} loading={formState.isSubmitting} />
       </View>

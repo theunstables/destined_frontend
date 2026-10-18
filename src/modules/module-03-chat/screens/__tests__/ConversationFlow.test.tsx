@@ -288,22 +288,18 @@ describe('ConversationScreen', () => {
     expect(mockReplace).toHaveBeenCalledWith('/(app)/chat')
   })
 
-  it('opens the video Moment from its call control', async () => {
-    const user = userEvent.setup()
+  it('keeps video calls disabled until a real call provider exists', async () => {
     await renderScreen(<ConversationScreen />)
 
-    await user.press(await screen.findByLabelText('Start video call'))
-
-    expect(mockPush).toHaveBeenCalledWith('/(app)/chat/moment/video')
+    expect((await screen.findByLabelText('Start video call')).props.accessibilityState)
+      .toMatchObject({ disabled: true })
   })
 
-  it('opens the voice Moment from its call control', async () => {
-    const user = userEvent.setup()
+  it('keeps voice calls disabled until a real call provider exists', async () => {
     await renderScreen(<ConversationScreen />)
 
-    await user.press(await screen.findByLabelText('Start voice call'))
-
-    expect(mockPush).toHaveBeenCalledWith('/(app)/chat/moment/voice')
+    expect((await screen.findByLabelText('Start voice call')).props.accessibilityState)
+      .toMatchObject({ disabled: true })
   })
 
   it('offers the overflow control without it doing anything yet', async () => {

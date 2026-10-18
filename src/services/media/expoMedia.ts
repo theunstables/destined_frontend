@@ -8,17 +8,53 @@ import type {
   Result,
 } from '@/services/media/types'
 
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+const ACCEPTED_PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic'])
+const ACCEPTED_VIDEO_TYPES = new Set(['video/mp4', 'video/quicktime'])
+
+function validateAsset(
+  asset: ImagePicker.ImagePickerAsset,
+  acceptedTypes: ReadonlySet<string>,
+): Result<never> | undefined {
+  if (asset.fileSize !== undefined && asset.fileSize > MAX_UPLOAD_BYTES) {
+    return { ok: false, error: { code: 'TOO_LARGE' } }
+  }
+
+  if (asset.mimeType && !acceptedTypes.has(asset.mimeType.toLowerCase())) {
+    return { ok: false, error: { code: 'UNSUPPORTED_TYPE' } }
+  }
+
+  return undefined
+}
+
 function ok(asset: ImagePicker.ImagePickerAsset): Result<PickedPhoto> {
+  const invalid = validateAsset(asset, ACCEPTED_PHOTO_TYPES)
+  if (invalid) return invalid
+
   return {
     ok: true,
-    value: { uri: asset.uri, width: asset.width, height: asset.height },
+    value: {
+      uri: asset.uri,
+      width: asset.width,
+      height: asset.height,
+      fileSize: asset.fileSize,
+      mimeType: asset.mimeType,
+    },
   }
 }
 
 function okVideo(asset: ImagePicker.ImagePickerAsset): Result<PickedVideo> {
+  const invalid = validateAsset(asset, ACCEPTED_VIDEO_TYPES)
+  if (invalid) return invalid
+
   return {
     ok: true,
-    value: { uri: asset.uri, durationMs: asset.duration ?? undefined },
+    value: {
+      uri: asset.uri,
+      durationMs: asset.duration ?? undefined,
+      fileSize: asset.fileSize,
+      mimeType: asset.mimeType,
+    },
   }
 }
 
@@ -62,7 +98,9 @@ function fromVideoResult(result: ImagePicker.ImagePickerResult): Result<PickedVi
  * rest of this app makes and the same limitation: it does not survive a
  * reinstall and does not reach the partner's phone until a backend exists.
  */
-export function createExpoMediaService(): MediaService {
+export function createExpoMediaService(
+  quality: () => 'standard' | 'high' = () => 'high',
+): MediaService {
   return {
     async pickPhoto(options: PickOptions = {}) {
       try {
@@ -75,7 +113,7 @@ export function createExpoMediaService(): MediaService {
             mediaTypes: ['images'],
             allowsEditing: options.allowsEditing ?? false,
             aspect: options.aspect,
-            quality: 0.9,
+            quality: quality() === 'high' ? 0.9 : 0.65,
           }),
         )
       } catch {
@@ -95,7 +133,7 @@ export function createExpoMediaService(): MediaService {
           await ImagePicker.launchCameraAsync({
             allowsEditing: options.allowsEditing ?? false,
             aspect: options.aspect,
-            quality: 0.9,
+            quality: quality() === 'high' ? 0.9 : 0.65,
           }),
         )
       } catch {

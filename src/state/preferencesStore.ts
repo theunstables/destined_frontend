@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 
+import { preferencesService } from '@/services/preferences'
+
 export type TextScale = 'small' | 'default' | 'large'
 export type AutoDownload = 'never' | 'wifi' | 'always'
 export type UploadQuality = 'standard' | 'high'
@@ -77,9 +79,35 @@ export type BooleanPreferenceKey = {
 }[keyof Preferences]
 
 type PreferencesState = Preferences & {
+  hydrated: boolean
+  saving: boolean
+  error: string | null
+  hydrate: () => Promise<void>
   setPreference: <K extends keyof Preferences>(key: K, value: Preferences[K]) => void
   toggle: (key: BooleanPreferenceKey) => void
   reset: () => void
+}
+
+const preferenceSnapshot = (state: PreferencesState): Preferences =>
+  Object.fromEntries(
+    (Object.keys(PREFERENCE_DEFAULTS) as (keyof Preferences)[]).map((key) => [key, state[key]]),
+  ) as Preferences
+
+let saveQueue = Promise.resolve()
+let saveRevision = 0
+
+const queueSave = (get: () => PreferencesState) => {
+  const revision = ++saveRevision
+  saveQueue = saveQueue.then(async () => {
+    const value = preferenceSnapshot(get())
+    usePreferencesStore.setState({ saving: true, error: null })
+    const result = await preferencesService.replace(value)
+    if (revision !== saveRevision) return
+    usePreferencesStore.setState({
+      saving: false,
+      error: result.ok ? null : 'Your settings could not be saved. Try again.',
+    })
+  })
 }
 
 /**
@@ -160,12 +188,32 @@ export const PREFERENCE_DEFAULTS: Preferences = {
  * One generic `setPreference` rather than forty named setters — see the
  * plan's Task 1 note. `Preferences[K]` keeps it fully type-checked.
  */
-export const usePreferencesStore = create<PreferencesState>((set) => ({
+export const usePreferencesStore = create<PreferencesState>((set, get) => ({
   ...PREFERENCE_DEFAULTS,
+  hydrated: false,
+  saving: false,
+  error: null,
 
-  setPreference: (key, value) => set({ [key]: value } as Pick<Preferences, typeof key>),
+  hydrate: async () => {
+    const result = await preferencesService.get()
+    if (!result.ok) {
+      set({ hydrated: true, error: 'Your settings could not be loaded.' })
+      return
+    }
+    set({ ...(result.value ?? {}), hydrated: true, error: null })
+  },
 
-  toggle: (key) => set((state) => ({ [key]: !state[key] }) as Pick<Preferences, typeof key>),
+  setPreference: (key, value) => {
+    set({ [key]: value } as Pick<Preferences, typeof key>)
+    queueSave(get)
+  },
 
-  reset: () => set({ ...PREFERENCE_DEFAULTS }),
+  toggle: (key) => {
+    set((state) => ({ [key]: !state[key] }) as Pick<Preferences, typeof key>)
+    queueSave(get)
+  },
+
+  reset: () => {
+    set({ ...PREFERENCE_DEFAULTS, hydrated: false, saving: false, error: null })
+  },
 }))

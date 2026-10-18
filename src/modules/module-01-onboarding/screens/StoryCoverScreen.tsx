@@ -4,9 +4,11 @@ import { useCallback } from 'react'
 import { useBackTo } from '@/hooks/useBackTo'
 import { STORY_COVER_COPY as COPY } from '@/copy/storyCover'
 import { StatusScreen } from '@/design-system/patterns/StatusScreen'
-import { AuthMedallion } from '@/modules/module-00-auth/components/AuthMedallion'
 import { Button } from '@/design-system/primitives/Button'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
+import { SharedWorldIllustration } from '@/modules/module-01-onboarding/components/SharedWorldIllustration'
+import { StoryProgress } from '@/modules/module-01-onboarding/components/StoryProgress'
 
 /**
  * M01-S12 — Our Story Cover. Stitch screen 0fa7b9a6.
@@ -26,7 +28,8 @@ export function StoryCoverScreen() {
   return (
     <AuthScreenLayout onBack={back} centred>
       <StatusScreen
-        illustration={<AuthMedallion />}
+        illustration={<SharedWorldIllustration />}
+        eyebrow={<AuthEyebrow align="center">{COPY.eyebrow}</AuthEyebrow>}
         heading={COPY.heading}
         lede={COPY.lede}
         actions={
@@ -36,6 +39,7 @@ export function StoryCoverScreen() {
           </>
         }
       />
+      <StoryProgress step={2} />
     </AuthScreenLayout>
   )
 }

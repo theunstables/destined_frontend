@@ -2,6 +2,8 @@ import { screen } from '@testing-library/react-native'
 
 import { HOME_DASHBOARD_COPY } from '@/copy/homeDashboard'
 import { HomeDashboardScreen } from '@/modules/module-02-home/screens/HomeDashboardScreen'
+import { useHomeStore } from '@/state/homeStore'
+import { useMemoriesStore } from '@/state/memoriesStore'
 import { useSpaceStore } from '@/state/spaceStore'
 import { useStoryStore } from '@/state/storyStore'
 import { renderScreen } from '@/test/renderScreen'
@@ -26,6 +28,8 @@ jest.mock('@/sample', () => ({
 beforeEach(() => {
   useStoryStore.getState().reset()
   useSpaceStore.getState().reset()
+  useHomeStore.getState().reset()
+  useMemoriesStore.getState().reset()
 })
 
 describe('M02-S01 Home Dashboard — no sample content', () => {

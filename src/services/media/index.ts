@@ -1,5 +1,6 @@
 import { createExpoMediaService } from '@/services/media/expoMedia'
 import { request } from '@/services/http/client'
+import { usePreferencesStore } from '@/state/preferencesStore'
 
 export type * from '@/services/media/types'
 
@@ -11,7 +12,9 @@ export type * from '@/services/media/types'
  * because picking a photo needs a device rather than a server. The indirection
  * still pays for itself — it is what lets a test pick a photo without one.
  */
-export const mediaService = createExpoMediaService()
+export const mediaService = createExpoMediaService(
+  () => usePreferencesStore.getState().uploadQuality,
+)
 
 /**
  * MEDIA UPLOAD.

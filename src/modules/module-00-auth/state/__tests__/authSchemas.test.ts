@@ -49,22 +49,17 @@ describe('signUpSchema', () => {
   it.each([
     ['too short', 'ab1'],
     ['missing a number', 'abcdefgh'],
-    ['missing a letter', '12345678'],
-    ['longer than the contract maximum', `${'a'.repeat(128)}1`],
+    ['missing a special character', 'hunter22'],
+    ['longer than the contract maximum', `${'a'.repeat(127)}1!`],
   ])('rejects a password %s', (_why, password) => {
     expect(signUpSchema.safeParse({ email: 'a@example.com', password }).success).toBe(false)
   })
 
-  /**
-   * The contract's policy is 8-128 characters with at least one letter and one
-   * number (`schemas/VALIDATION.md`). The client must not be stricter than that
-   * or it blocks passwords the server would accept.
-   */
   it.each([
     ['the contract signup example', 'LoveOS@123'],
     ['the contract reset example', 'NewLoveOS@123'],
-    ['no special character, which the contract does not require', 'hunter22'],
-    ['exactly the contract maximum', `${'a'.repeat(127)}1`],
+    ['digits and special characters', '1234567!'],
+    ['exactly the contract maximum', `${'a'.repeat(126)}1!`],
   ])('accepts %s', (_why, password) => {
     expect(signUpSchema.safeParse({ email: 'a@example.com', password }).success).toBe(true)
   })

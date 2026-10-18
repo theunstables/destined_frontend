@@ -1,13 +1,16 @@
 import { create } from 'zustand'
 
+import { isMockMode } from '@/config/env'
 import {
   SAMPLE_CAPSULES,
   SAMPLE_LETTERS,
   SAMPLE_LIFETIME,
   SAMPLE_PLACES,
   SAMPLE_TRIP,
+  SAMPLE_WATCH_ROOM,
   SAMPLE_YEAR_BOARD,
 } from '@/sample/plans'
+import { plansService } from '@/services/plans'
 import type {
   BingoTileState,
   Capsule,
@@ -19,7 +22,9 @@ import type {
   SharedPromise,
   Trip,
   TripDraft,
+  WatchRoom,
   YearBoard,
+  PlansSnapshot,
 } from '@/services/plans/types'
 
 /**
@@ -30,16 +35,9 @@ import type {
  * has to change a number on a card the user has already seen. Seven stores would
  * have meant the hub subscribing to seven of them.
  *
- * NOTHING PERSISTS. Like `relationshipStore`, this is in-memory only — there is
- * no provider to write to yet, and a half-finished capsule surviving a reload
- * would be a promise the app cannot keep. `reset()` exists for tests.
- *
- * Seeded from `@/sample/plans` rather than starting empty, which is the opposite
- * of what `memoriesService` does. The difference is deliberate: a new couple
- * genuinely has no memories, so that screen's empty state is the honest first
- * view. These screens are a DESIGN being built ahead of a backend, and an empty
- * bingo board shows none of what the design is. When the backend lands, the seed
- * becomes `[]` and the empty states — which are built and tested — take over.
+ * Mutations are optimistically queued through `plansService`; API mode hydrates
+ * from the couple-scoped backend document, while mock mode is seeded from the
+ * design fixtures. `reset()` exists for tests.
  */
 
 type PlansState = {
@@ -49,6 +47,7 @@ type PlansState = {
   lifetimeTarget: number
   capsules: Capsule[]
   letters: Letter[]
+  watchRoom: WatchRoom | null
 
   /** Which day of the itinerary is selected. 1-based. */
   selectedDay: number
@@ -56,6 +55,10 @@ type PlansState = {
   /** Location sharing — the only feature here with a live/off state. */
   sharingWindow: ShareWindow | null
   minutesRemaining: number
+  hydrated: boolean
+  saving: boolean
+  error: string | null
+  hydrate: () => Promise<void>
 
   /* --- trips --- */
   selectDay: (number: number) => void
@@ -84,10 +87,14 @@ type PlansState = {
 
   /* --- capsules --- */
   sealCapsule: (draft: CapsuleDraft) => Capsule
+  openCapsule: (capsuleId: string) => 'opened' | 'not-due' | 'not-found'
 
   /* --- letters --- */
   sealLetter: (draft: LetterDraft) => Letter
   openLetter: (letterId: string) => void
+
+  /* --- watch together --- */
+  setWatchRoom: (room: WatchRoom | null) => void
 
   /* --- places --- */
   setSharingWindow: (window: ShareWindow | null) => void
@@ -96,17 +103,60 @@ type PlansState = {
 }
 
 /** The seed, rebuilt on every `reset()` so tests never share mutated arrays. */
+const emptyTrip: Trip = {
+  id: 'new-trip', title: 'Our next adventure', destination: '', dateRange: '', coverUri: null,
+  nights: 1, travellers: 2, budgetBand: 'flexible', estimatedCost: 0, currency: '£',
+  styles: [], days: [], momentsPlanned: 0, momentsTotal: 0,
+}
+
+const emptyYearBoard: YearBoard = {
+  year: new Date().getUTCFullYear(), tiles: [], encouragement: '', daysRemaining: 0,
+}
+
 const seed = () => ({
-  trip: structuredClone(SAMPLE_TRIP),
-  yearBoard: structuredClone(SAMPLE_YEAR_BOARD),
-  promises: structuredClone(SAMPLE_LIFETIME.promises),
-  lifetimeTarget: SAMPLE_LIFETIME.target,
-  capsules: structuredClone(SAMPLE_CAPSULES),
-  letters: structuredClone(SAMPLE_LETTERS),
+  trip: structuredClone(isMockMode ? SAMPLE_TRIP : emptyTrip),
+  yearBoard: structuredClone(isMockMode ? SAMPLE_YEAR_BOARD : emptyYearBoard),
+  promises: structuredClone(isMockMode ? SAMPLE_LIFETIME.promises : []),
+  lifetimeTarget: isMockMode ? SAMPLE_LIFETIME.target : 50,
+  capsules: structuredClone(isMockMode ? SAMPLE_CAPSULES : []),
+  letters: structuredClone(isMockMode ? SAMPLE_LETTERS : []),
+  watchRoom: structuredClone(isMockMode ? SAMPLE_WATCH_ROOM : null),
   selectedDay: 1,
-  sharingWindow: SAMPLE_PLACES.activeWindow,
-  minutesRemaining: SAMPLE_PLACES.minutesRemaining,
+  sharingWindow: isMockMode ? SAMPLE_PLACES.activeWindow : null,
+  minutesRemaining: isMockMode ? SAMPLE_PLACES.minutesRemaining : 0,
+  hydrated: false,
+  saving: false,
+  error: null,
 })
+
+const snapshot = (state: PlansState): PlansSnapshot => ({
+  trip: state.trip,
+  yearBoard: state.yearBoard,
+  promises: state.promises,
+  lifetimeTarget: state.lifetimeTarget,
+  capsules: state.capsules,
+  letters: state.letters,
+  watchRoom: state.watchRoom,
+  sharingWindow: state.sharingWindow,
+  minutesRemaining: state.minutesRemaining,
+})
+
+let saveQueue = Promise.resolve()
+let saveRevision = 0
+const queueSave = (get: () => PlansState) => {
+  const revision = ++saveRevision
+  saveQueue = saveQueue.then(async () => {
+    const value = structuredClone(snapshot(get()))
+    usePlansStore.setState({ saving: true, error: null })
+    const result = await plansService.replace(value)
+    if (revision !== saveRevision) return
+    if (result.ok) {
+      usePlansStore.setState({ ...result.value, saving: false, error: null })
+    } else {
+      usePlansStore.setState({ saving: false, error: 'Your plans could not be saved. Try again.' })
+    }
+  })
+}
 
 /**
  * A bingo tile cycles rather than toggles.
@@ -124,9 +174,18 @@ const NEXT_TILE_STATE: Record<BingoTileState, BingoTileState> = {
 export const usePlansStore = create<PlansState>((set, get) => ({
   ...seed(),
 
+  hydrate: async () => {
+    const result = await plansService.get()
+    if (!result.ok) {
+      set({ hydrated: true, error: 'Your plans could not be loaded.' })
+      return
+    }
+    set({ ...(result.value ?? seed()), selectedDay: 1, hydrated: true, error: null })
+  },
+
   selectDay: (number) => set({ selectedDay: number }),
 
-  toggleMomentSaved: (momentId) =>
+  toggleMomentSaved: (momentId) => {
     set((state) => ({
       trip: {
         ...state.trip,
@@ -137,9 +196,11 @@ export const usePlansStore = create<PlansState>((set, get) => ({
           ),
         })),
       },
-    })),
+    }))
+    queueSave(get)
+  },
 
-  createTrip: (draft) =>
+  createTrip: (draft) => {
     set((state) => ({
       // The generated plan keeps the sample's days — there is no planner to run,
       // and inventing empty days would make "Create our plan" look broken. What
@@ -152,13 +213,21 @@ export const usePlansStore = create<PlansState>((set, get) => ({
         styles: draft.styles,
       },
       selectedDay: 1,
-    })),
+    }))
+    queueSave(get)
+  },
 
-  setGeneratedTrip: (trip) => set({ trip, selectedDay: 1 }),
+  setGeneratedTrip: (trip) => {
+    set({ trip, selectedDay: 1 })
+    queueSave(get)
+  },
 
-  setTripCover: (uri) => set((state) => ({ trip: { ...state.trip, coverUri: uri } })),
+  setTripCover: (uri) => {
+    set((state) => ({ trip: { ...state.trip, coverUri: uri } }))
+    queueSave(get)
+  },
 
-  cycleTile: (tileId) =>
+  cycleTile: (tileId) => {
     set((state) => ({
       yearBoard: {
         ...state.yearBoard,
@@ -166,16 +235,20 @@ export const usePlansStore = create<PlansState>((set, get) => ({
           tile.id === tileId ? { ...tile, state: NEXT_TILE_STATE[tile.state] } : tile,
         ),
       },
-    })),
+    }))
+    queueSave(get)
+  },
 
-  togglePromiseLived: (promiseId) =>
+  togglePromiseLived: (promiseId) => {
     set((state) => ({
       promises: state.promises.map((promise) =>
         promise.id === promiseId ? { ...promise, lived: !promise.lived } : promise,
       ),
-    })),
+    }))
+    queueSave(get)
+  },
 
-  addPromise: ({ title, detail, category }) =>
+  addPromise: ({ title, detail, category }) => {
     set((state) => ({
       promises: [
         ...state.promises,
@@ -189,7 +262,9 @@ export const usePlansStore = create<PlansState>((set, get) => ({
           tag: 'Ours',
         },
       ],
-    })),
+    }))
+    queueSave(get)
+  },
 
   sealCapsule: (draft) => {
     const capsule: Capsule = {
@@ -205,8 +280,26 @@ export const usePlansStore = create<PlansState>((set, get) => ({
     }
 
     set((state) => ({ capsules: [capsule, ...state.capsules] }))
+    queueSave(get)
 
     return capsule
+  },
+
+  openCapsule: (capsuleId) => {
+    const capsule = get().capsules.find((item) => item.id === capsuleId)
+    if (!capsule) return 'not-found'
+    if (capsule.opened) return 'opened'
+
+    const today = new Date().toISOString().slice(0, 10)
+    if (capsule.opensAt > today) return 'not-due'
+
+    set((state) => ({
+      capsules: state.capsules.map((item) =>
+        item.id === capsuleId ? { ...item, opened: true } : item,
+      ),
+    }))
+    queueSave(get)
+    return 'opened'
   },
 
   sealLetter: (draft) => {
@@ -230,22 +323,32 @@ export const usePlansStore = create<PlansState>((set, get) => ({
     }
 
     set({ letters: [letter, ...letters] })
+    queueSave(get)
 
     return letter
   },
 
-  openLetter: (letterId) =>
+  openLetter: (letterId) => {
     set((state) => ({
       letters: state.letters.map((letter) =>
         letter.id === letterId ? { ...letter, state: 'opened' } : letter,
       ),
-    })),
+    }))
+    queueSave(get)
+  },
 
-  setSharingWindow: (window) =>
+  setWatchRoom: (watchRoom) => {
+    set({ watchRoom })
+    queueSave(get)
+  },
+
+  setSharingWindow: (window) => {
     set({
       sharingWindow: window,
       minutesRemaining: window === '1h' ? 60 : window === 'tonight' ? 480 : 0,
-    }),
+    })
+    queueSave(get)
+  },
 
   reset: () => set({ ...seed() }),
 }))

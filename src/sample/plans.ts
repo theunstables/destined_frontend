@@ -526,6 +526,7 @@ export const SAMPLE_SEAL_OPTIONS = [
  * ------------------------------------------------------------------ */
 
 export const SAMPLE_WATCH_ROOM: WatchRoom = {
+  streamUri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
   tonight: {
     id: 'w-notebook',
     title: 'The Notebook',

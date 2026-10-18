@@ -8,7 +8,9 @@ import { DAYS_THAT_MATTER_COPY as COPY } from '@/copy/daysThatMatter'
 import { Button } from '@/design-system/primitives/Button'
 import { DateField } from '@/design-system/primitives/DateField'
 import { Text } from '@/design-system/primitives/Text'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
+import { StoryProgress } from '@/modules/module-01-onboarding/components/StoryProgress'
 import type { KeyDates } from '@/services/story/types'
 import { useStoryStore } from '@/state/storyStore'
 
@@ -62,6 +64,7 @@ export function DaysThatMatterScreen() {
   return (
     <AuthScreenLayout onBack={back}>
       <View style={styles.copy}>
+        <AuthEyebrow align="center">{COPY.eyebrow}</AuthEyebrow>
         <Text variant="h1" tone="heading" align="center">
           {COPY.heading}
         </Text>
@@ -85,13 +88,14 @@ export function DaysThatMatterScreen() {
         <Button label={COPY.submit} onPress={submit} />
         <Button label={COPY.skip} onPress={next} variant="link" />
       </View>
+      <StoryProgress step={7} />
     </AuthScreenLayout>
   )
 }
 
 const styles = StyleSheet.create((theme) => ({
   copy: {
-    gap: theme.spacing.xs,
+    gap: theme.spacing.sm,
     paddingBottom: theme.spacing.huge,
   },
   form: {

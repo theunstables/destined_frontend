@@ -37,7 +37,9 @@ describe('M01-S12 Story Cover', () => {
     const user = userEvent.setup()
     await renderScreen(<StoryCoverScreen />)
 
+    expect(screen.getByText(STORY_COVER_COPY.eyebrow)).toBeTruthy()
     expect(screen.getByText(STORY_COVER_COPY.heading)).toBeTruthy()
+    expect(screen.getByRole('progressbar', { name: 'Story step 2 of 7' })).toBeTruthy()
 
     await user.press(screen.getByRole('button', { name: STORY_COVER_COPY.begin }))
     expect(mockPush).toHaveBeenCalledWith('/(onboarding)/when-we-met')
@@ -56,6 +58,8 @@ describe('M01-S13 When We Met', () => {
   it('offers all three precisions', async () => {
     await renderScreen(<WhenWeMetScreen />)
 
+    expect(screen.getByText(WHEN_WE_MET_COPY.eyebrow)).toBeTruthy()
+    expect(screen.getByRole('progressbar', { name: 'Story step 3 of 7' })).toBeTruthy()
     expect(screen.getByLabelText('Exact date')).toBeTruthy()
     expect(screen.getByLabelText('Month + Year')).toBeTruthy()
     expect(screen.getByLabelText('Year only')).toBeTruthy()
@@ -115,6 +119,8 @@ describe('M01-S14 First Date Memory', () => {
   it('renders every field, including the multiline memory', async () => {
     await renderScreen(<FirstDateMemoryScreen />)
 
+    expect(screen.getByText(FIRST_DATE_COPY.eyebrow)).toBeTruthy()
+    expect(screen.getByRole('progressbar', { name: 'Story step 4 of 7' })).toBeTruthy()
     expect(screen.getByPlaceholderText(FIRST_DATE_COPY.locationPlaceholder)).toBeTruthy()
     expect(screen.getByLabelText(FIRST_DATE_COPY.memoryLabel).props.multiline).toBe(true)
   })
@@ -147,6 +153,8 @@ describe('M01-S15 When We Became Us', () => {
   it('marks the optional fields as optional', async () => {
     await renderScreen(<BecameUsScreen />)
 
+    expect(screen.getByText(BECAME_US_COPY.eyebrow)).toBeTruthy()
+    expect(screen.getByRole('progressbar', { name: 'Story step 5 of 7' })).toBeTruthy()
     expect(screen.getByText(BECAME_US_COPY.locationLabel)).toBeTruthy()
     expect(screen.getByText(BECAME_US_COPY.noteLabel)).toBeTruthy()
   })
@@ -166,6 +174,8 @@ describe('M01-S16 The First Memory', () => {
     const user = userEvent.setup()
     await renderScreen(<FirstMemoryScreen />)
 
+    expect(screen.getByText(FIRST_MEMORY_COPY.eyebrow)).toBeTruthy()
+    expect(screen.getByRole('progressbar', { name: 'Story step 6 of 7' })).toBeTruthy()
     expect(screen.getByRole('button', { name: FIRST_MEMORY_COPY.photoLabel })).toBeTruthy()
 
     await user.press(screen.getByRole('button', { name: FIRST_MEMORY_COPY.submit }))
@@ -177,6 +187,8 @@ describe('M01-S17 Days That Matter', () => {
   it('renders all five dates', async () => {
     await renderScreen(<DaysThatMatterScreen />)
 
+    expect(screen.getByText(DAYS_THAT_MATTER_COPY.eyebrow)).toBeTruthy()
+    expect(screen.getByRole('progressbar', { name: 'Story step 7 of 7' })).toBeTruthy()
     for (const field of DAYS_THAT_MATTER_COPY.fields) {
       expect(screen.getByLabelText(`${field.label} month`)).toBeTruthy()
     }
@@ -201,6 +213,7 @@ describe('M01-S18 Our Story Recap', () => {
   it('says so plainly when nothing was added', async () => {
     await renderScreen(<StoryRecapScreen />)
 
+    expect(screen.getByText(STORY_RECAP_COPY.eyebrow)).toBeTruthy()
     expect(screen.getByText(STORY_RECAP_COPY.emptyTitle)).toBeTruthy()
   })
 
@@ -232,6 +245,7 @@ describe('M01-S18 Our Story Recap', () => {
     await user.press(screen.getByRole('button', { name: STORY_RECAP_COPY.submit }))
 
     expect(await screen.findByText(STORY_RECAP_COPY.errors.NETWORK)).toBeTruthy()
+    expect(screen.getByRole('alert')).toHaveTextContent('Story not saved')
     expect(mockReplace).not.toHaveBeenCalled()
   })
 })
@@ -240,6 +254,7 @@ describe('M01-S19 Your Story Is Ready', () => {
   it('marks skipped steps as skipped rather than ticking them', async () => {
     await renderScreen(<StoryReadyScreen />)
 
+    expect(screen.getByText(STORY_READY_COPY.eyebrow)).toBeTruthy()
     expect(screen.getAllByText(STORY_READY_COPY.skipped)).toHaveLength(5)
   })
 

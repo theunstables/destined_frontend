@@ -8,6 +8,9 @@ import { PARTNER_FOUND_COPY as COPY } from '@/copy/partnerFound'
 import { StatusScreen } from '@/design-system/patterns/StatusScreen'
 import { Avatar } from '@/design-system/primitives/Avatar'
 import { Button } from '@/design-system/primitives/Button'
+import { Card } from '@/design-system/primitives/Card'
+import { Text } from '@/design-system/primitives/Text'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
 import { useRelationshipStore } from '@/state/relationshipStore'
 
@@ -46,11 +49,22 @@ export function PartnerFoundScreen() {
 
   return (
     <AuthScreenLayout onBack={back} centred>
+      <View style={styles.eyebrow}>
+        <AuthEyebrow align="center">{COPY.eyebrow}</AuthEyebrow>
+      </View>
       <StatusScreen
         illustration={
-          <View style={styles.avatar}>
-            <Avatar size={AVATAR_SIZE} name={partner.name} uri={partner.photoUri} ring />
-          </View>
+          <Card>
+            <View style={styles.avatar}>
+              <Avatar size={AVATAR_SIZE} name={partner.name} uri={partner.photoUri} ring />
+              <Text variant="labelStrong" tone="heading" align="center">
+                {partner.name}
+              </Text>
+              <Text variant="footnote" tone="body" align="center">
+                One private world for two.
+              </Text>
+            </View>
+          </Card>
         }
         heading={COPY.heading}
         lede={COPY.lede(partner.name)}
@@ -65,8 +79,12 @@ export function PartnerFoundScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create((theme) => ({
+  eyebrow: {
+    paddingBottom: theme.spacing.lg,
+  },
   avatar: {
     alignItems: 'center',
+    gap: theme.spacing.sm,
   },
-})
+}))

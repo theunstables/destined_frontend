@@ -10,8 +10,9 @@ import { BRAND } from '@/config/brand'
  * quietly rendering stale copy.
  */
 export const WELCOME_COPY = {
-  headlineLines: ['Your relationship.', 'Beautifully kept.'],
-  subtitleLines: ['A private digital home for everything', 'that makes you, you.'],
+  eyebrow: 'One private world for two',
+  headlineLines: ['Destined'],
+  subtitleLines: ['Where two stories become ours.'],
   primaryCta: 'Get Started',
   secondaryText: 'Already have an account?',
   secondaryLink: 'Sign In',

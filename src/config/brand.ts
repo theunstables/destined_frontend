@@ -2,7 +2,7 @@
  * BRAND — the single source of truth for the product's identity.
  *
  * RULE: the product name is written here and ONLY here.
- * Never type "Tales of Two" directly into a screen, button, alert, or message.
+ * Never type the product name directly into a screen, button, alert, or message.
  * Every surface reads from this file.
  *
  * The name was provisional ("LoveOS") until the domain was bought on
@@ -11,7 +11,7 @@
  */
 export const BRAND = {
   /** Display name shown to users. */
-  name: 'Tales of Two',
+  name: 'Destined',
 
   /**
    * Short descriptor for the product.
@@ -19,7 +19,7 @@ export const BRAND = {
    * Rendered as the headline on M00-S01 Welcome, where the design typesets it
    * across two lines — see `@/copy/welcome`, which asserts the two stay in sync.
    */
-  tagline: 'Your relationship. Beautifully kept.',
+  tagline: 'Where two stories become ours.',
 
   /**
    * The product's home on the web. Lowercase — hostnames are case-insensitive

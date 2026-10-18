@@ -14,7 +14,7 @@
  *      mistyped code has to be recoverable. `confirmPartner` is the commit.
  */
 import { requireApiUrl } from '@/config/env'
-import { get, post, put } from '@/services/http/client'
+import { get, patch, post, put } from '@/services/http/client'
 import { toPairingErrorCode } from '@/services/http/errors'
 import { ensureRemoteUri } from '@/services/media'
 import type {
@@ -37,6 +37,14 @@ export function createHttpPairingService(): PairingService {
   requireApiUrl()
 
   return {
+    async getProfile(): Promise<Result<Profile>> {
+      try {
+        return ok(await get<Profile>('/pairing/profile'))
+      } catch (error) {
+        return fail(error)
+      }
+    },
+
     async createProfile(input: Profile): Promise<Result<Profile>> {
       try {
         const photoUri = await ensureRemoteUri(input.photoUri)
@@ -45,7 +53,13 @@ export function createHttpPairingService(): PairingService {
          * edit, and re-submitting an unchanged profile must not create a
          * second one. The endpoint is an idempotent replace.
          */
-        const profile = await put<Profile>('/pairing/profile', { ...input, photoUri })
+        const profile = await put<Profile>('/pairing/profile', {
+          name: input.name,
+          nickname: input.nickname,
+          birthday: input.birthday,
+          pronouns: input.pronouns,
+          photoUri,
+        })
         return ok(profile)
       } catch (error) {
         return fail(error)
@@ -104,6 +118,14 @@ export function createHttpPairingService(): PairingService {
     async getSpace(): Promise<Result<SpaceStatus>> {
       try {
         return ok(await get<SpaceStatus>('/pairing/space'))
+      } catch (error) {
+        return fail(error)
+      }
+    },
+
+    async updateSpace(input): Promise<Result<SpaceStatus>> {
+      try {
+        return ok(await patch<SpaceStatus>('/pairing/space', input))
       } catch (error) {
         return fail(error)
       }

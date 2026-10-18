@@ -33,6 +33,7 @@ describe('ResetPasswordScreen', () => {
   it('renders the form state from copy', async () => {
     await renderScreen(<ResetPasswordScreen />)
 
+    expect(screen.getByText(COPY.eyebrow)).toBeTruthy()
     expect(screen.getByText(COPY.heading)).toBeTruthy()
     expect(screen.getByText(COPY.lede)).toBeTruthy()
     expect(screen.getByLabelText(COPY.newPasswordLabel)).toBeTruthy()
@@ -103,7 +104,9 @@ describe('ResetPasswordScreen', () => {
     await fillAndSubmit('NewLoveOS@123')
 
     expect(await screen.findByText(COPY.successHeading)).toBeTruthy()
+    expect(screen.getByText(COPY.successEyebrow)).toBeTruthy()
     expect(screen.getByText(COPY.successLede)).toBeTruthy()
+    expect(screen.getByRole('header', { name: COPY.successHeading })).toBeTruthy()
     expect(screen.queryByLabelText(COPY.newPasswordLabel)).toBeNull()
   })
 
@@ -125,6 +128,7 @@ describe('ResetPasswordScreen', () => {
     await fillAndSubmit('NewLoveOS@123')
 
     expect(await screen.findByText(COPY.errors.TOKEN_EXPIRED)).toBeTruthy()
+    expect(screen.getByRole('alert')).toHaveTextContent(COPY.errors.TOKEN_EXPIRED)
     expect(screen.queryByText(AUTH_ERROR_COPY.TOKEN_EXPIRED)).toBeNull()
   })
 

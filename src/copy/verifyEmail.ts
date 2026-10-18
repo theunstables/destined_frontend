@@ -5,6 +5,7 @@
  * does not.
  */
 export const VERIFY_EMAIL_COPY = {
+  eyebrow: 'Secure your world',
   heading: 'Check your inbox 💌',
   lede: 'We sent a verification link to your email.',
   resend: 'Resend Email',
@@ -14,6 +15,9 @@ export const VERIFY_EMAIL_COPY = {
    * this is the user asserting they have followed the link.
    */
   continue: "I've Verified",
+  checking: 'Checking verification…',
+  notVerified: 'We cannot confirm the link yet. Open it from your email, then try again.',
+  missingSession: 'Your sign-in session is missing. Return to Create Account and sign in again.',
   /** Figma shows 00:59 — one tick into a 60-second cooldown. */
   resendCooldownSeconds: 60,
 } as const

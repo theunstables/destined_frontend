@@ -4,9 +4,10 @@ import { View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { RELATIONSHIP_SETUP_COPY as COPY } from '@/copy/relationshipSetup'
-import { Button } from '@/design-system/primitives/Button'
 import { Text } from '@/design-system/primitives/Text'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
+import { PairingChoiceCard } from '@/modules/module-01-onboarding/components/PairingChoiceCard'
 
 /**
  * M01-S01 — Relationship Setup. Figma 522:302.
@@ -24,11 +25,12 @@ export function RelationshipSetupScreen() {
 
   const goToProfile = useCallback(() => router.push('/(onboarding)/profile'), [router])
   const goToEnterCode = useCallback(() => router.push('/(onboarding)/enter-code'), [router])
-  const goToStoryBegins = useCallback(() => router.push('/(onboarding)/story-begins'), [router])
+  const goToPairLater = useCallback(() => router.push('/(onboarding)/pair-later'), [router])
 
   return (
     <AuthScreenLayout centred>
       <View style={styles.copy}>
+        <AuthEyebrow align="center">{COPY.eyebrow}</AuthEyebrow>
         <Text variant="h1" tone="heading" align="center">
           {COPY.heading}
         </Text>
@@ -38,9 +40,24 @@ export function RelationshipSetupScreen() {
       </View>
 
       <View style={styles.actions}>
-        <Button label={COPY.invite} onPress={goToProfile} />
-        <Button label={COPY.haveCode} onPress={goToEnterCode} variant="outline" />
-        <Button label={COPY.later} onPress={goToStoryBegins} variant="link" />
+        <PairingChoiceCard
+          icon="send"
+          title={COPY.invite}
+          body={COPY.inviteBody}
+          onPress={goToProfile}
+        />
+        <PairingChoiceCard
+          icon="hash"
+          title={COPY.haveCode}
+          body={COPY.haveCodeBody}
+          onPress={goToEnterCode}
+        />
+        <PairingChoiceCard
+          icon="heart"
+          title={COPY.later}
+          body={COPY.laterBody}
+          onPress={goToPairLater}
+        />
       </View>
     </AuthScreenLayout>
   )
@@ -48,8 +65,8 @@ export function RelationshipSetupScreen() {
 
 const styles = StyleSheet.create((theme) => ({
   copy: {
-    gap: theme.spacing.xs,
-    paddingBottom: theme.spacing.huge,
+    gap: theme.spacing.sm,
+    paddingBottom: theme.spacing.xxxl,
   },
   actions: {
     gap: theme.spacing.md,

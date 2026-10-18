@@ -4,7 +4,10 @@ import { useCallback } from 'react'
 import { OUR_STORY_BEGINS_COPY as COPY } from '@/copy/ourStoryBegins'
 import { StatusScreen } from '@/design-system/patterns/StatusScreen'
 import { Button } from '@/design-system/primitives/Button'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
+import { SharedWorldIllustration } from '@/modules/module-01-onboarding/components/SharedWorldIllustration'
+import { StoryProgress } from '@/modules/module-01-onboarding/components/StoryProgress'
 
 /**
  * M01-S11 — Our Story Begins. Figma 522:834.
@@ -22,6 +25,8 @@ export function OurStoryBeginsScreen() {
   return (
     <AuthScreenLayout centred>
       <StatusScreen
+        illustration={<SharedWorldIllustration />}
+        eyebrow={<AuthEyebrow align="center">{COPY.eyebrow}</AuthEyebrow>}
         heading={COPY.heading}
         lede={COPY.lede}
         actions={
@@ -31,6 +36,7 @@ export function OurStoryBeginsScreen() {
           </>
         }
       />
+      <StoryProgress step={1} />
     </AuthScreenLayout>
   )
 }

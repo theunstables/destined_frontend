@@ -1,15 +1,18 @@
 import { useRouter } from 'expo-router'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { useBackTo } from '@/hooks/useBackTo'
 import { ALBUMS_COPY as COPY } from '@/copy/albums'
 import { AppScreenLayout } from '@/design-system/patterns/AppScreenLayout'
+import { Button } from '@/design-system/primitives/Button'
 import { Text } from '@/design-system/primitives/Text'
 import { AlbumCard } from '@/modules/module-03-memories/components/AlbumCard'
 import { SAMPLE_ALBUMS } from '@/sample/albums'
 import { USE_SAMPLE_CONTENT } from '@/sample'
+import { memoriesService } from '@/services/memories'
+import type { MemoryAlbum } from '@/services/memories/types'
 
 /**
  * M03-S05 — Your albums. Figma `Ziyu`, Memories Page frame 2.
@@ -21,11 +24,28 @@ import { USE_SAMPLE_CONTENT } from '@/sample'
 export function AlbumsScreen() {
   const router = useRouter()
   const back = useBackTo('/(app)/memories')
+  const [albums, setAlbums] = useState<MemoryAlbum[] | typeof SAMPLE_ALBUMS | null>(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    void memoriesService.listAlbums().then((result) => {
+      if (!active) return
+      if (!result.ok) {
+        setFailed(true)
+        setAlbums([])
+        return
+      }
+      setAlbums(result.value.length === 0 && USE_SAMPLE_CONTENT ? SAMPLE_ALBUMS : result.value)
+    })
+    return () => { active = false }
+  }, [])
 
   const open = useCallback(
     (key: string) => router.push(`/(app)/memories/albums/${encodeURIComponent(key)}`),
     [router],
   )
+  const create = useCallback(() => router.push('/(app)/memories/albums/new'), [router])
 
   /*
    * GATED ON THE SAMPLE SWITCH, like Home and the Memories list already are.
@@ -35,8 +55,6 @@ export function AlbumsScreen() {
    * empty app — left six invented albums sitting here with counts like "86" on
    * them. The empty state below was written and then unreachable.
    */
-  const albums = USE_SAMPLE_CONTENT ? SAMPLE_ALBUMS : []
-
   return (
     <AppScreenLayout activeTab="memories" onBack={back}>
       <View style={styles.head}>
@@ -48,7 +66,13 @@ export function AlbumsScreen() {
         </Text>
       </View>
 
-      {albums.length === 0 ? (
+      <Button label={COPY.list.create} onPress={create} variant="outline" />
+
+      {albums === null ? null : failed ? (
+        <Text variant="body" tone="error">
+          {COPY.list.error}
+        </Text>
+      ) : albums.length === 0 ? (
         <Text variant="body" tone="body">
           {COPY.list.empty}
         </Text>

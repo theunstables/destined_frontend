@@ -21,22 +21,22 @@ describe('PasswordStrength', () => {
   })
 
   it('reads weak while only one rule passes', async () => {
-    // 'abc' is too short and has no digit, so only the letter rule passes.
-    await render(<PasswordStrength value="abc" />)
+    // Only the special-character rule passes.
+    await render(<PasswordStrength value="!" />)
 
     expect(screen.getAllByTestId('strength-bar-filled')).toHaveLength(1)
     expect(screen.getByText(COPY.strengthLevels.weak)).toBeTruthy()
   })
 
   it('reads fair when two rules pass', async () => {
-    await render(<PasswordStrength value="abcdefgh" />)
+    await render(<PasswordStrength value="abcdefgh1" />)
 
     expect(screen.getAllByTestId('strength-bar-filled')).toHaveLength(2)
     expect(screen.getByText(COPY.strengthLevels.fair)).toBeTruthy()
   })
 
   it('reads strong only when the password actually satisfies the contract', async () => {
-    await render(<PasswordStrength value="hunter22" />)
+    await render(<PasswordStrength value="hunter22!" />)
 
     expect(screen.getAllByTestId('strength-bar-filled')).toHaveLength(3)
     expect(screen.getByText(COPY.strengthLevels.strong)).toBeTruthy()
@@ -45,9 +45,9 @@ describe('PasswordStrength', () => {
   it('does not call an over-long password strong', async () => {
     // The Stitch prototype called anything past six characters "Strong", which
     // would label a 129-character password the server rejects as the best kind.
-    // It satisfies letter and number but breaks the maximum, so it is Fair at
+    // It satisfies number and special character but breaks the maximum, so it is Fair at
     // best — and never the top of the scale.
-    await render(<PasswordStrength value={`${'a'.repeat(128)}1`} />)
+    await render(<PasswordStrength value={`${'a'.repeat(127)}1!`} />)
 
     expect(screen.queryByText(COPY.strengthLevels.strong)).toBeNull()
     expect(screen.getAllByTestId('strength-bar-filled')).toHaveLength(2)
@@ -60,7 +60,7 @@ describe('PasswordStrength', () => {
   })
 
   it('states strength as text, so it is not carried by colour alone', async () => {
-    await render(<PasswordStrength value="hunter22" />)
+    await render(<PasswordStrength value="hunter22!" />)
 
     expect(screen.getByLabelText(`${COPY.strengthLabel}: ${COPY.strengthLevels.strong}`)).toBeTruthy()
   })

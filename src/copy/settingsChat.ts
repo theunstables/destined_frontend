@@ -20,6 +20,7 @@
 export const SETTINGS_CHAT_COPY = {
   title: 'Chat',
   lede: 'How your conversation behaves.',
+  unavailable: 'Chat preferences are not available in this build yet.',
 
   presenceGroup: 'What they can see',
   readReceipts: 'Read receipts',

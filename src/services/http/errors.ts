@@ -79,15 +79,10 @@ export function toPairingErrorCode(error: unknown): PairingErrorCode {
     case 'CODE_INVALID':
     case 'CODE_EXPIRED':
     case 'CANNOT_PAIR_WITH_SELF':
+    case 'ALREADY_PAIRED':
+    case 'EMAIL_NOT_VERIFIED':
     case 'NETWORK':
       return error.code
-    /**
-     * The pairing union has no `ALREADY_PAIRED`, and inventing one would mean
-     * touching a screen. A code that cannot be redeemed by this account is,
-     * from the redeem screen's point of view, a code that does not work.
-     */
-    case 'ALREADY_PAIRED':
-      return 'CODE_INVALID'
     default:
       return 'UNKNOWN'
   }
@@ -95,7 +90,11 @@ export function toPairingErrorCode(error: unknown): PairingErrorCode {
 
 export function toMemoryErrorCode(error: unknown): MemoryErrorCode {
   if (!isApiError(error)) return 'UNKNOWN'
-  if (error.code === 'NOT_FOUND' || error.code === 'NETWORK') return error.code
+  if (
+    error.code === 'CONFLICT'
+    || error.code === 'NOT_FOUND'
+    || error.code === 'NETWORK'
+  ) return error.code
   return 'UNKNOWN'
 }
 

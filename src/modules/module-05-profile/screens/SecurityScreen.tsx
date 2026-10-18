@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router'
 import { useCallback, useState } from 'react'
 
+import { isMockMode } from '@/config/env'
 import { SETTINGS_SECURITY_COPY as COPY } from '@/copy/settingsSecurity'
 import { DangerRow } from '@/design-system/patterns/DangerRow'
 import { SectionPanel } from '@/design-system/patterns/SectionPanel'
@@ -13,9 +14,9 @@ import { MOCK_SESSIONS } from '@/modules/module-05-profile/data/mock'
 /**
  * M05-S08 — Settings → Security & Sessions.
  *
- * The session list is local state seeded from `MOCK_SESSIONS`, so signing the
- * others out actually removes them from the list. A confirmation that leaves
- * the list unchanged teaches the user their action did nothing.
+ * Session and two-factor controls are previewable in mock mode. API-backed
+ * builds render honest informational rows because no remote-session or 2FA
+ * contract exists; security-sensitive local simulation must never look real.
  *
  * Change password and two-factor are rows without destinations in this plan.
  * Both are auth operations, `services/auth` is a mock, and inventing a
@@ -45,28 +46,42 @@ export function SecurityScreen() {
           label={COPY.changePassword}
           detail={COPY.changePasswordDetail}
         />
-        <SettingsToggleRow
-          icon="shield"
-          label={COPY.twoFactor}
-          detail={COPY.twoFactorDetail}
-          value={twoFactor}
-          onValueChange={setTwoFactor}
-        />
+        {isMockMode ? (
+          <SettingsToggleRow
+            icon="shield"
+            label={COPY.twoFactor}
+            detail={COPY.twoFactorDetail}
+            value={twoFactor}
+            onValueChange={setTwoFactor}
+          />
+        ) : (
+          <SettingsRow
+            icon="shield"
+            label={COPY.twoFactor}
+            detail={`${COPY.twoFactorDetail} ${COPY.unavailable}`}
+          />
+        )}
       </SectionPanel>
 
       <SectionPanel title={COPY.sessionsGroup}>
-        {sessions.map((session) => (
-          <SettingsRow
-            key={session.id}
-            icon={session.isCurrent ? 'smartphone' : 'monitor'}
-            label={session.device}
-            detail={`${session.location} · ${COPY.lastActivePrefix} ${session.lastActive}`}
-            value={session.isCurrent ? COPY.thisDevice : undefined}
-          />
-        ))}
+        {isMockMode ? (
+          sessions.map((session) => (
+            <SettingsRow
+              key={session.id}
+              icon={session.isCurrent ? 'smartphone' : 'monitor'}
+              label={session.device}
+              detail={`${session.location} · ${COPY.lastActivePrefix} ${session.lastActive}`}
+              value={session.isCurrent ? COPY.thisDevice : undefined}
+            />
+          ))
+        ) : (
+          <Text variant="body" tone="body">
+            {COPY.sessionsUnavailable}
+          </Text>
+        )}
       </SectionPanel>
 
-      {hasOthers ? (
+      {isMockMode && hasOthers ? (
         <SectionPanel title={COPY.dangerGroup}>
           <DangerRow
             icon="log-out"
@@ -81,7 +96,7 @@ export function SecurityScreen() {
         </SectionPanel>
       ) : null}
 
-      {signedOutOthers ? (
+      {isMockMode && signedOutOthers ? (
         <Text variant="footnote" tone="success">
           {COPY.signedOutAll}
         </Text>

@@ -3,23 +3,45 @@ import { screen, userEvent } from '@testing-library/react-native'
 import { ALBUMS_COPY as COPY } from '@/copy/albums'
 import { AlbumDetailScreen } from '@/modules/module-03-memories/screens/AlbumDetailScreen'
 import { AlbumsScreen } from '@/modules/module-03-memories/screens/AlbumsScreen'
+import { CreateAlbumScreen } from '@/modules/module-03-memories/screens/CreateAlbumScreen'
 import { SAMPLE_ALBUMS, memoriesInAlbum } from '@/sample/albums'
 import { SAMPLE_HOME } from '@/sample/home'
+import { memoriesService } from '@/services/memories'
 import { renderScreen } from '@/test/renderScreen'
 
 const mockPush = jest.fn()
 const mockBack = jest.fn()
+const mockReplace = jest.fn()
 let mockKey = 'Trips'
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ canGoBack: () => true, push: mockPush, replace: jest.fn(), back: mockBack }),
+  useRouter: () => ({ canGoBack: () => true, push: mockPush, replace: mockReplace, back: mockBack }),
   useLocalSearchParams: () => ({ key: mockKey }),
 }))
+jest.mock('@/services/memories', () => ({
+  memoriesService: {
+    listAlbums: jest.fn(async () => ({ ok: true, value: [] })),
+    createAlbum: jest.fn(),
+    getAlbum: jest.fn(async () => ({ ok: false, error: { code: 'NOT_FOUND' } })),
+    listAlbumMemories: jest.fn(async () => ({ ok: true, value: [] })),
+    removeFromAlbum: jest.fn(),
+  },
+}))
+
+const service = jest.mocked(memoriesService)
 
 beforeEach(() => {
+  jest.clearAllMocks()
   mockPush.mockClear()
   mockBack.mockClear()
   mockKey = 'Trips'
+  service.listAlbums.mockResolvedValue({ ok: true, value: [] })
+  service.createAlbum.mockResolvedValue({
+    ok: true,
+    value: { id: 'album-9', key: 'weekends', label: 'Weekends', count: 0 },
+  })
+  service.getAlbum.mockResolvedValue({ ok: false, error: { code: 'NOT_FOUND' } })
+  service.listAlbumMemories.mockResolvedValue({ ok: true, value: [] })
 })
 
 describe('M03-S05 Your albums', () => {
@@ -55,9 +77,60 @@ describe('M03-S05 Your albums', () => {
 
     expect(mockPush).toHaveBeenCalledWith('/(app)/memories/albums/Little%20Things')
   })
+
+  it('opens the create-album form', async () => {
+    const user = userEvent.setup()
+    await renderScreen(<AlbumsScreen />)
+
+    await user.press(screen.getByRole('button', { name: COPY.list.create }))
+
+    expect(mockPush).toHaveBeenCalledWith('/(app)/memories/albums/new')
+  })
+})
+
+describe('M03-S07 Create Album', () => {
+  it('creates a trimmed album and replaces into its detail route', async () => {
+    const user = userEvent.setup()
+    await renderScreen(<CreateAlbumScreen />)
+
+    await user.type(screen.getByLabelText(COPY.create.nameLabel), '  Weekends  ')
+    await user.type(screen.getByLabelText(COPY.create.emojiLabel), '☀️')
+    await user.press(screen.getByRole('button', { name: COPY.create.submit }))
+
+    expect(service.createAlbum).toHaveBeenCalledWith({
+      label: 'Weekends',
+      emoji: '☀️',
+      coverUri: undefined,
+    })
+    expect(mockReplace).toHaveBeenCalledWith('/(app)/memories/albums/album-9')
+  })
 })
 
 describe('M03-S06 Album Detail', () => {
+  it('loads a real album and removes membership through the provider', async () => {
+    mockKey = 'album-1'
+    const album = {
+      id: 'album-1', key: 'trips', label: 'Trips', emoji: '✈️', count: 1,
+    }
+    const memory = {
+      id: 'memory-1', title: 'Mountain sunrise', date: '2026-10-12',
+      tags: ['Trips'], favorite: false,
+    }
+    service.getAlbum.mockResolvedValueOnce({ ok: true, value: album })
+    service.listAlbumMemories.mockResolvedValueOnce({ ok: true, value: [memory] })
+    service.removeFromAlbum.mockResolvedValueOnce({ ok: true, value: undefined })
+    const user = userEvent.setup()
+
+    await renderScreen(<AlbumDetailScreen />)
+    await user.press(await screen.findByRole('button', { name: COPY.detail.remove }))
+
+    expect(service.removeFromAlbum).toHaveBeenCalledWith({
+      albumId: album.id,
+      memoryId: memory.id,
+    })
+    expect(await screen.findByText(COPY.detail.empty)).toBeTruthy()
+  })
+
   it('titles the hero with the album and its count', async () => {
     const trips = SAMPLE_ALBUMS.find((a) => a.key === 'Trips')!
 

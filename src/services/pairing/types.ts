@@ -9,6 +9,8 @@ export type PairingErrorCode =
   | 'CODE_INVALID'
   | 'CODE_EXPIRED'
   | 'CANNOT_PAIR_WITH_SELF'
+  | 'ALREADY_PAIRED'
+  | 'EMAIL_NOT_VERIFIED'
   | 'NETWORK'
   | 'UNKNOWN'
 
@@ -55,6 +57,12 @@ export type SpaceStatus = {
   partner?: Partner
 }
 
+export type UpdateSpaceInput = {
+  name: string
+  shortName: string
+  coverStyle: SpaceStatus['coverStyle']
+}
+
 export type CoupleLifecycle = {
   status: 'connected' | 'paused' | 'archived'
   sharedWritesAllowed: boolean
@@ -72,6 +80,7 @@ export type Invite = {
 }
 
 export type PairingService = {
+  getProfile: () => Promise<Result<Profile>>
   createProfile: (input: Profile) => Promise<Result<Profile>>
   createInvite: () => Promise<Result<Invite>>
   /** Resolves the partner behind a code without committing to them yet. */
@@ -80,6 +89,7 @@ export type PairingService = {
   confirmPartner: (input: { partnerId: string }) => Promise<Result<null>>
   cancelInvite: (input: { code: string }) => Promise<Result<null>>
   getSpace: () => Promise<Result<SpaceStatus>>
+  updateSpace: (input: UpdateSpaceInput) => Promise<Result<SpaceStatus>>
   getLifecycle: () => Promise<Result<CoupleLifecycle>>
   pause: () => Promise<Result<CoupleLifecycle>>
   reactivate: () => Promise<Result<CoupleLifecycle>>

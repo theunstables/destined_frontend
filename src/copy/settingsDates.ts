@@ -9,6 +9,7 @@
 export const SETTINGS_DATES_COPY = {
   title: 'Dates & Reminders',
   lede: 'How much warning you get before a day that matters.',
+  unavailable: 'Reminder timing preferences are not available in this build yet.',
 
   leadGroup: 'How far ahead',
   anniversary: 'Anniversaries',

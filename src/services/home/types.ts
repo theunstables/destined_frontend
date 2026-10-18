@@ -41,7 +41,7 @@ export type HomeDashboard = {
   stats: HomeStat[]
   comingUp: ComingUp[]
   recentMemories: HomeRecentMemory[]
-  pulse: HomePulse
+  pulse: HomePulse | null
 }
 
 export type HomeService = {

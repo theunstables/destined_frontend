@@ -157,7 +157,12 @@ export function Input({
       </View>
 
       {error ? (
-        <View testID="input-error" aria-live="polite">
+        <View
+          testID="input-error"
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          aria-live="polite"
+        >
           <Text variant="footnote" tone="error">
             {error}
           </Text>

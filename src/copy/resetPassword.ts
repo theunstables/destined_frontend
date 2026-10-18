@@ -1,5 +1,3 @@
-import { BRAND } from '@/config/brand'
-
 /**
  * Copy for M00-S06 Reset Password. Stitch screen c2f89424.
  *
@@ -11,6 +9,7 @@ import { BRAND } from '@/config/brand'
  * rather than inventing a voice for them.
  */
 export const RESET_PASSWORD_COPY = {
+  eyebrow: 'Account recovery',
   heading: 'Create a new password',
   lede: 'Your new password must be unique from those previously used.',
 
@@ -28,14 +27,15 @@ export const RESET_PASSWORD_COPY = {
 
   submit: 'Update Password',
 
-  successHeading: "You're back in ❤️",
-  successLede: `Your ${BRAND.name} is waiting for you.`,
+  successHeading: 'Password updated ❤️',
+  successLede: 'Sign in with your new password to continue.',
   /**
    * Goes to sign in, not into the app. The contract revokes every refresh
-   * session on reset and returns no tokens, so there is no session to continue
-   * into — however much the heading implies one.
+  * session on reset and returns no tokens, so there is no session to continue
+  * into.
    */
-  successAction: 'Continue',
+  successAction: 'Return to Sign In',
+  successEyebrow: 'All set',
 
   /** NOT IN THE DESIGN. Reachable by opening the screen without a token. */
   missingTokenAction: 'Request a new link',

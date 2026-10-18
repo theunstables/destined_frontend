@@ -6,6 +6,7 @@ import { View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 import { z } from 'zod'
 
+import { isMockMode } from '@/config/env'
 import { SETTINGS_PERSONAL_DETAILS_COPY as COPY } from '@/copy/settingsPersonalDetails'
 import { PhotoPicker } from '@/design-system/patterns/PhotoPicker'
 import { SectionPanel } from '@/design-system/patterns/SectionPanel'
@@ -15,7 +16,10 @@ import { Button } from '@/design-system/primitives/Button'
 import { DateField } from '@/design-system/primitives/DateField'
 import { Input } from '@/design-system/primitives/Input'
 import { Text } from '@/design-system/primitives/Text'
+import { usePhotoPick } from '@/hooks/usePhotoPick'
+import { pairingService } from '@/services/pairing'
 import { useRelationshipStore } from '@/state/relationshipStore'
+import { useSessionStore } from '@/state/sessionStore'
 import { isPhoneNumber } from '@/utils/phone'
 
 const schema = z.object({
@@ -37,24 +41,29 @@ type FormValues = z.infer<typeof schema>
  *
  * The same fields `CreateProfileScreen` collects, in a settings frame — this is
  * where you change what you told the app during onboarding. The form stays in
- * `react-hook-form`; only the submitted result reaches `relationshipStore`,
- * which is the rule `ARCHITECTURE.md` sets and `CreateProfileScreen` follows.
+ * `react-hook-form`; the pairing provider persists supported fields and only
+ * its authoritative result reaches `relationshipStore`.
  *
  * EMAIL IS READ-ONLY. It is the sign-in credential, and changing it is a
  * security operation with its own confirmation — it belongs on Security &
  * Sessions, not in a form that saves five other things at once.
  *
- * EDITING THE PHONE CLEARS `phoneVerified`. A number that has changed has not
- * been proven, and leaving the badge behind would let someone type any number
- * and keep a verified mark that was earned by a different one.
+ * Phone collection/verification has no backend contract, so it remains a
+ * mock-preview control and is absent from API-backed builds.
  */
 export function PersonalDetailsScreen() {
   const router = useRouter()
   const profile = useRelationshipStore((state) => state.profile)
   const setProfile = useRelationshipStore((state) => state.setProfile)
-  const [isSaved, setIsSaved] = useState(false)
+  const email = useSessionStore((state) => state.session?.email)
+  const [photoUri, setPhotoUri] = useState<string | null>(profile?.photoUri ?? null)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const { pick, error: photoError } = usePhotoPick(setPhotoUri, {
+    allowsEditing: true,
+    aspect: [1, 1],
+  })
 
-  const { control, handleSubmit, watch } = useForm<FormValues>({
+  const { control, handleSubmit, watch, formState } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: profile?.name ?? '',
@@ -72,23 +81,29 @@ export function PersonalDetailsScreen() {
   const goToVerify = useCallback(() => router.push('/(app)/settings/verify-phone'), [router])
 
   const onSubmit = useCallback(
-    (values: FormValues) => {
+    async (values: FormValues) => {
+      setSaveState('saving')
       const phoneChanged = values.phone !== profile?.phone
-
-      setProfile({
-        ...profile,
+      const result = await pairingService.createProfile({
         name: values.name,
         nickname: values.nickname || undefined,
         birthday: values.birthday || undefined,
         pronouns: values.pronouns || undefined,
+        photoUri: photoUri ?? undefined,
         phone: values.phone || undefined,
-        // A changed number has not been proven. See the header comment.
         phoneVerified: phoneChanged ? false : profile?.phoneVerified,
       })
 
-      setIsSaved(true)
+      if (!result.ok) {
+        setSaveState('error')
+        return
+      }
+
+      setProfile(result.value)
+      setPhotoUri(result.value.photoUri ?? null)
+      setSaveState('saved')
     },
-    [profile, setProfile],
+    [photoUri, profile, setProfile],
   )
 
   return (
@@ -97,11 +112,14 @@ export function PersonalDetailsScreen() {
         <PhotoPicker
           label={COPY.photoLabel}
           name={profile?.name ?? ''}
-          uri={profile?.photoUri}
-          onPick={() => {
-            // Picking is Module 03's `PhotoPicker` behaviour; nothing to add here.
-          }}
+          uri={photoUri}
+          onPick={pick}
         />
+        {photoError ? (
+          <Text variant="footnote" tone="error" align="center">
+            {photoError}
+          </Text>
+        ) : null}
       </View>
 
       <SectionPanel title={COPY.aboutGroup}>
@@ -165,50 +183,64 @@ export function PersonalDetailsScreen() {
       </SectionPanel>
 
       <SectionPanel title={COPY.contactGroup}>
-        <Input
-          label={COPY.emailLabel}
-          value="ana@example.com"
-          onChangeText={() => {}}
-          editable={false}
-        />
+        {email ? (
+          <Input
+            label={COPY.emailLabel}
+            value={email}
+            onChangeText={() => {}}
+            editable={false}
+          />
+        ) : null}
         <Text variant="footnote" tone="body">
           {COPY.emailLocked}
         </Text>
 
-        <Controller
-          control={control}
-          name="phone"
-          render={({ field, fieldState }) => (
-            <Input
-              label={COPY.phoneLabel}
-              placeholder={COPY.phonePlaceholder}
-              value={field.value ?? ''}
-              onChangeText={field.onChange}
-              onBlur={field.onBlur}
-              error={fieldState.error?.message}
-              keyboardType="phone-pad"
-              autoComplete="tel"
+        {isMockMode ? (
+          <>
+            <Controller
+              control={control}
+              name="phone"
+              render={({ field, fieldState }) => (
+                <Input
+                  label={COPY.phoneLabel}
+                  placeholder={COPY.phonePlaceholder}
+                  value={field.value ?? ''}
+                  onChangeText={field.onChange}
+                  onBlur={field.onBlur}
+                  error={fieldState.error?.message}
+                  keyboardType="phone-pad"
+                  autoComplete="tel"
+                />
+              )}
             />
-          )}
-        />
 
-        <Text variant="footnote" tone="body">
-          {COPY.phoneHelp}
-        </Text>
+            <Text variant="footnote" tone="body">
+              {COPY.phoneHelp}
+            </Text>
 
-        <SettingsRow
-          icon={isVerified ? 'check-circle' : 'alert-circle'}
-          label={COPY.verifyAction}
-          detail={isVerified ? COPY.phoneVerified : COPY.phoneUnverified}
-          onPress={goToVerify}
-        />
+            <SettingsRow
+              icon={isVerified ? 'check-circle' : 'alert-circle'}
+              label={COPY.verifyAction}
+              detail={isVerified ? COPY.phoneVerified : COPY.phoneUnverified}
+              onPress={goToVerify}
+            />
+          </>
+        ) : null}
       </SectionPanel>
 
-      <Button label={COPY.save} onPress={handleSubmit(onSubmit)} />
+      <Button
+        label={COPY.save}
+        onPress={handleSubmit(onSubmit)}
+        loading={formState.isSubmitting || saveState === 'saving'}
+      />
 
-      {isSaved ? (
-        <Text variant="footnote" tone="success">
+      {saveState === 'saved' ? (
+        <Text variant="footnote" tone="success" accessibilityLiveRegion="polite">
           {COPY.saved}
+        </Text>
+      ) : saveState === 'error' ? (
+        <Text variant="footnote" tone="error" accessibilityRole="alert">
+          {COPY.saveError}
         </Text>
       ) : null}
     </SettingsScreenLayout>

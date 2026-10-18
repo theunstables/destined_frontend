@@ -2,11 +2,12 @@ import { Feather } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import { useVideoPlayer, VideoView } from 'expo-video'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pressable, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { WATCH_COPY } from '@/copy/watchTogether'
+import { isMockMode } from '@/config/env'
 import { AppScreenLayout } from '@/design-system/patterns/AppScreenLayout'
 import { Button } from '@/design-system/primitives/Button'
 import { Input } from '@/design-system/primitives/Input'
@@ -16,10 +17,11 @@ import { ProgressBar } from '@/modules/module-06-plans/components/ProgressBar'
 import { ScreenIntro } from '@/modules/module-06-plans/components/ScreenIntro'
 import {
   SAMPLE_WATCH_KEEPSAKE,
-  SAMPLE_WATCH_ROOM,
-  SAMPLE_WATCH_STREAM,
 } from '@/sample/plans'
-import type { Whisper } from '@/services/plans/types'
+import { memoriesService } from '@/services/memories'
+import type { WatchRoom, Whisper } from '@/services/plans/types'
+import { watchTogetherService } from '@/services/watchTogether'
+import { usePlansStore } from '@/state/plansStore'
 import { useRelationshipStore } from '@/state/relationshipStore'
 
 const REACTIONS = ['❤️', '😂', '😮', '😊'] as const
@@ -60,33 +62,151 @@ const IMAGE_FILL = {
  * dev client (`expo run:android` / `run:ios`) — it will not run in Expo Go.
  */
 export function WatchTogetherScreen() {
+  const room = usePlansStore((state) => state.watchRoom)
+  const setWatchRoom = usePlansStore((state) => state.setWatchRoom)
+  const [title, setTitle] = useState('')
+  const [streamUri, setStreamUri] = useState('')
+
+  if (room) return <WatchRoomScreen room={room} />
+
+  const createRoom = () => {
+    const cleanTitle = title.trim()
+    const cleanStream = streamUri.trim()
+    if (!cleanTitle || !/^https:\/\//i.test(cleanStream)) return
+    setWatchRoom({
+      streamUri: cleanStream,
+      tonight: {
+        id: `watch-${Date.now()}`,
+        title: cleanTitle,
+        year: new Date().getUTCFullYear(),
+        meta: 'Shared screening',
+        posterUri: null,
+        progress: 0,
+        remaining: null,
+      },
+      pickedBy: 'me',
+      matchScore: 0,
+      quote: 'Chosen by us.',
+      synopsis: 'A private room for your next shared watch.',
+      connected: false,
+      position: '00:00:00',
+      duration: '00:00:00',
+      whispers: [],
+      queue: [],
+      history: [],
+      keepsakeMemoryId: null,
+    })
+  }
+
+  return (
+    <AppScreenLayout activeTab="plans">
+      <ScreenIntro
+        chip={WATCH_COPY.eyebrow}
+        chipIcon="film"
+        title={WATCH_COPY.title}
+        lede="Create a private room with a rights-cleared HTTPS video source."
+      />
+      <Input label="Title" value={title} onChangeText={setTitle} placeholder="Tonight's title" />
+      <Input
+        label="Video source"
+        value={streamUri}
+        onChangeText={setStreamUri}
+        placeholder="https://…"
+        autoCapitalize="none"
+      />
+      <Button
+        label="Create shared room"
+        onPress={createRoom}
+        disabled={!title.trim() || !/^https:\/\//i.test(streamUri.trim())}
+      />
+    </AppScreenLayout>
+  )
+}
+
+function WatchRoomScreen({ room }: { room: WatchRoom }) {
   const router = useRouter()
   const { theme } = useUnistyles()
 
   const partner = useRelationshipStore((state) => state.partner)
   const profile = useRelationshipStore((state) => state.profile)
+  const setWatchRoom = usePlansStore((state) => state.setWatchRoom)
 
-  const partnerName = partner?.name ?? 'Sarah'
-  const names = `${profile?.name ?? 'Chandu'} & ${partnerName}`
-
-  const room = SAMPLE_WATCH_ROOM
+  const partnerName = partner?.name ?? (isMockMode ? 'Sarah' : 'Partner')
+  const names = `${profile?.name ?? (isMockMode ? 'Chandu' : 'You')} & ${partnerName}`
 
   const [started, setStarted] = useState(false)
   const [whispers, setWhispers] = useState<Whisper[]>(room.whispers)
   const [draft, setDraft] = useState('')
+  const [queueTitle, setQueueTitle] = useState('')
   const [reaction, setReaction] = useState<string | null>(null)
-  const [savedToMemories, setSavedToMemories] = useState(false)
+  const [savedToMemories, setSavedToMemories] = useState(Boolean(room.keepsakeMemoryId))
+  const [savingKeepsake, setSavingKeepsake] = useState(false)
+  const [keepsakeError, setKeepsakeError] = useState<string | null>(null)
+  const [connected, setConnected] = useState(isMockMode && room.connected)
+  const applyingRemotePlayback = useRef(false)
 
-  const player = useVideoPlayer(SAMPLE_WATCH_STREAM, (instance) => {
+  const player = useVideoPlayer(room.streamUri, (instance) => {
     // Not auto-played: the screen has a "Start watching now" button, and a video
     // that begins on its own would talk over whatever the user was listening to.
     instance.loop = false
     instance.muted = false
   })
 
+  useEffect(() => watchTogetherService.subscribe((event) => {
+    if (event.type === 'presence') {
+      setConnected(event.connected)
+      return
+    }
+    if (event.type === 'whisper') {
+      const minutes = Math.floor(event.positionSeconds / 60)
+      const seconds = Math.floor(event.positionSeconds % 60).toString().padStart(2, '0')
+      const entry: Whisper = {
+        id: event.id, from: 'partner', text: event.text, at: `at ${minutes}:${seconds}`,
+      }
+      setWhispers((current) => {
+        if (current.some((item) => item.id === event.id)) return current
+        const next = [...current, entry]
+        const currentRoom = usePlansStore.getState().watchRoom
+        if (currentRoom && !currentRoom.whispers.some((item) => item.id === event.id)) {
+          setWatchRoom({ ...currentRoom, whispers: [...currentRoom.whispers, entry] })
+        }
+        return next
+      })
+      return
+    }
+    if (event.type === 'reaction') {
+      setReaction(event.emoji)
+      return
+    }
+    if (event.type === 'playback') {
+      applyingRemotePlayback.current = true
+      if (Math.abs(player.currentTime - event.positionSeconds) > 0.75) {
+        player.currentTime = event.positionSeconds
+      }
+      if (event.action === 'play') player.play()
+      if (event.action === 'pause') player.pause()
+      setTimeout(() => { applyingRemotePlayback.current = false }, 250)
+    }
+  }), [player, setWatchRoom])
+
+  useEffect(() => {
+    const observable = player as typeof player & {
+      addListener?: (name: string, listener: (event: { isPlaying?: boolean }) => void) =>
+        { remove: () => void }
+    }
+    if (!observable.addListener) return undefined
+    const subscription = observable.addListener('playingChange', ({ isPlaying }) => {
+      if (!applyingRemotePlayback.current) {
+        watchTogetherService.playback(isPlaying ? 'play' : 'pause', player.currentTime)
+      }
+    })
+    return () => subscription.remove()
+  }, [player])
+
   const onStart = () => {
     setStarted(true)
     player.play()
+    watchTogetherService.playback('play', player.currentTime)
   }
 
   const onWhisper = () => {
@@ -94,11 +214,80 @@ export function WatchTogetherScreen() {
 
     if (!text) return
 
-    setWhispers((current) => [
-      ...current,
-      { id: `wh-${current.length + 1}`, from: 'me', text, at: `at ${room.position}` },
-    ])
+    const entry: Whisper = {
+      id: `wh-${Date.now()}`, from: 'me', text, at: `at ${Math.floor(player.currentTime / 60)}:${Math.floor(player.currentTime % 60).toString().padStart(2, '0')}`,
+    }
+    setWhispers((current) => {
+      const next = [...current, entry]
+      const currentRoom = usePlansStore.getState().watchRoom
+      if (currentRoom && !currentRoom.whispers.some((item) => item.id === entry.id)) {
+        setWatchRoom({ ...currentRoom, whispers: [...currentRoom.whispers, entry] })
+      }
+      return next
+    })
+    watchTogetherService.whisper(text, player.currentTime)
     setDraft('')
+  }
+
+  const addToQueue = () => {
+    const title = queueTitle.trim()
+    if (!title) return
+    const currentRoom = usePlansStore.getState().watchRoom
+    if (!currentRoom) return
+    setWatchRoom({
+      ...currentRoom,
+      queue: [...currentRoom.queue, {
+        id: `watch-queue-${Date.now()}`, title, year: new Date().getUTCFullYear(),
+        meta: 'Queued together', posterUri: null, progress: 0, remaining: null,
+      }],
+    })
+    setQueueTitle('')
+  }
+
+  const finishSession = () => {
+    player.pause()
+    const currentRoom = usePlansStore.getState().watchRoom
+    if (!currentRoom) return
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    setWatchRoom({
+      ...currentRoom,
+      tonight: { ...currentRoom.tonight, progress: 100, remaining: null },
+      connected: false,
+      history: [{
+        id: `watch-history-${Date.now()}`,
+        title: currentRoom.tonight.title,
+        detail: `Watched on ${today} · Shared by us`,
+        reactions: reaction
+          ? `${reaction} · ${currentRoom.whispers.length} whispers`
+          : `${currentRoom.whispers.length} whispers`,
+      }, ...currentRoom.history],
+    })
+    setStarted(false)
+  }
+
+  const saveKeepsake = async () => {
+    if (savedToMemories || savingKeepsake) return
+    setKeepsakeError(null)
+    setSavingKeepsake(true)
+    try {
+      const result = await memoriesService.create({
+        title: room.tonight.title,
+        date: new Date().toISOString().slice(0, 10),
+        caption: `Watched together${connected ? ' live' : ''}.`,
+        note: whispers.length > 0 ? `${whispers.length} whispers shared during the session.` : undefined,
+        tags: ['Watch Together'],
+        favorite: false,
+      })
+      if (result.ok) {
+        const currentRoom = usePlansStore.getState().watchRoom
+        if (currentRoom) setWatchRoom({ ...currentRoom, keepsakeMemoryId: result.value.id })
+        setSavedToMemories(true)
+      } else setKeepsakeError('This keepsake could not be saved. Try again.')
+    } catch {
+      setKeepsakeError('This keepsake could not be saved. Try again.')
+    } finally {
+      setSavingKeepsake(false)
+    }
   }
 
   return (
@@ -172,8 +361,8 @@ export function WatchTogetherScreen() {
             </View>
 
             <Chip
-              label={room.connected ? WATCH_COPY.connected(names) : WATCH_COPY.disconnected}
-              tone={room.connected ? 'success' : 'neutral'}
+              label={connected ? WATCH_COPY.connected(names) : WATCH_COPY.disconnected}
+              tone={connected ? 'success' : 'neutral'}
               icon="users"
             />
           </View>
@@ -193,7 +382,7 @@ export function WatchTogetherScreen() {
               </Text>
 
               <Text variant="countdown" tone="onPrimary">
-                {WATCH_COPY.frameLocked('0.02s')}
+                {connected ? WATCH_COPY.frameLocked('live sync') : WATCH_COPY.disconnected}
               </Text>
             </View>
           </View>
@@ -206,7 +395,10 @@ export function WatchTogetherScreen() {
             {REACTIONS.map((emoji) => (
               <Pressable
                 key={emoji}
-                onPress={() => setReaction(emoji)}
+                onPress={() => {
+                  setReaction(emoji)
+                  watchTogetherService.react(emoji)
+                }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: reaction === emoji }}
                 accessibilityLabel={`React ${emoji}`}
@@ -299,9 +491,12 @@ export function WatchTogetherScreen() {
 
             <Button
               label={savedToMemories ? SAMPLE_WATCH_KEEPSAKE.footer : SAMPLE_WATCH_KEEPSAKE.action}
-              onPress={() => setSavedToMemories(true)}
+              onPress={saveKeepsake}
               disabled={savedToMemories}
+              loading={savingKeepsake}
             />
+            {keepsakeError ? <Text variant="footnote" tone="danger">{keepsakeError}</Text> : null}
+            <Button label="Finish session" onPress={finishSession} variant="outline" />
           </View>
         </>
       ) : null}
@@ -346,6 +541,13 @@ export function WatchTogetherScreen() {
             </View>
           ))}
         </View>
+        <Input
+          label="Add to queue"
+          value={queueTitle}
+          onChangeText={setQueueTitle}
+          placeholder="A title for later"
+        />
+        <Button label="Add title" onPress={addToQueue} variant="soft" disabled={!queueTitle.trim()} />
       </View>
 
       {/* HISTORY */}

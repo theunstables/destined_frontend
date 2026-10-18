@@ -12,9 +12,19 @@ export const fontFamily = {
   regular: 'PlusJakartaSans_400Regular',
   semibold: 'PlusJakartaSans_600SemiBold',
   bold: 'PlusJakartaSans_700Bold',
+  /** Editorial brand face used by the finalized two-worlds title reveal. */
+  display: 'Georgia',
 } as const
 
 export const typography = {
+  /** Brand reveal and rare editorial hero titles. */
+  display: {
+    fontFamily: fontFamily.display,
+    fontSize: 58,
+    lineHeight: 62,
+    letterSpacing: -3,
+    fontWeight: '700' as const,
+  },
   /** Screen headline. Figma 522:292. */
   h1: {
     fontFamily: fontFamily.bold,

@@ -14,6 +14,7 @@ describe('StatusScreen', () => {
     )
 
     expect(screen.getByText('Creating your shared space...')).toBeTruthy()
+    expect(screen.getByRole('header', { name: 'Creating your shared space...' })).toBeTruthy()
     expect(screen.getByText('just a moment')).toBeTruthy()
     expect(screen.getByText('Continue')).toBeTruthy()
   })
@@ -30,5 +31,12 @@ describe('StatusScreen', () => {
     )
 
     expect(screen.getByText('art')).toBeTruthy()
+  })
+
+  it('can politely announce an in-place state transition', async () => {
+    await render(<StatusScreen heading="Password updated" announce />)
+
+    expect(screen.getByRole('header', { name: 'Password updated' }).props.accessibilityLiveRegion)
+      .toBe('polite')
   })
 })

@@ -8,6 +8,9 @@ import { CONFIRM_PARTNER_COPY as COPY } from '@/copy/confirmPartner'
 import { StatusScreen } from '@/design-system/patterns/StatusScreen'
 import { Avatar } from '@/design-system/primitives/Avatar'
 import { Button } from '@/design-system/primitives/Button'
+import { Card } from '@/design-system/primitives/Card'
+import { Text } from '@/design-system/primitives/Text'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
 import { useRelationshipStore } from '@/state/relationshipStore'
 
@@ -38,21 +41,35 @@ export function ConfirmPartnerScreen() {
 
   return (
     <AuthScreenLayout onBack={back} centred>
+      <View style={styles.eyebrow}>
+        <AuthEyebrow align="center">{COPY.eyebrow}</AuthEyebrow>
+      </View>
       <StatusScreen
         illustration={
-          <View style={styles.pair}>
-            {/*
-              The redeem branch never passes through profile creation, so this
-              side often has no name. `youLabel` keeps the circle labelled
-              rather than rendering an anonymous one that reads as loading.
-            */}
-            <Avatar
-              size={AVATAR_SIZE}
-              name={profile?.name || COPY.youLabel}
-              uri={profile?.photoUri}
-            />
-            <Avatar size={AVATAR_SIZE} name={partner.name} uri={partner.photoUri} />
-          </View>
+          <Card>
+            <View style={styles.cardContent}>
+              <View style={styles.pair}>
+                {/*
+                  The redeem branch never passes through profile creation, so this
+                  side often has no name. `youLabel` keeps the circle labelled
+                  rather than rendering an anonymous one that reads as loading.
+                */}
+                <Avatar
+                  size={AVATAR_SIZE}
+                  name={profile?.name || COPY.youLabel}
+                  uri={profile?.photoUri}
+                />
+                <Text variant="h2" tone="brand">♡</Text>
+                <Avatar size={AVATAR_SIZE} name={partner.name} uri={partner.photoUri} />
+              </View>
+              <Text variant="labelStrong" tone="heading" align="center">
+                {(profile?.name || COPY.youLabel)} + {partner.name}
+              </Text>
+              <Text variant="footnote" tone="body" align="center">
+                {COPY.cardLede}
+              </Text>
+            </View>
+          </Card>
         }
         heading={COPY.heading}
         lede={COPY.lede}
@@ -68,6 +85,13 @@ export function ConfirmPartnerScreen() {
 }
 
 const styles = StyleSheet.create((theme) => ({
+  eyebrow: {
+    paddingBottom: theme.spacing.lg,
+  },
+  cardContent: {
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
   pair: {
     flexDirection: 'row',
     gap: theme.spacing.md,

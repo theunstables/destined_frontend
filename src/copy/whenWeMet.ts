@@ -9,8 +9,9 @@ import type { DatePrecision } from '@/services/story/types'
  * `DateField` exists at all.
  */
 export const WHEN_WE_MET_COPY = {
+  eyebrow: 'When We Met',
   heading: 'When did your story begin?',
-  lede: 'The day everything started. Give us as much as you remember.',
+  lede: 'Give us as much as you remember.',
   precisionLabel: 'How well do you remember it?',
   precisions: [
     { value: 'exact' as DatePrecision, label: 'Exact date' },

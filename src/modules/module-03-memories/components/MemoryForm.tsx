@@ -54,6 +54,7 @@ export function MemoryForm({ initial, submitLabel, onCancel, onSubmit }: MemoryF
   )
 
   const [titleError, setTitleError] = useState<string | null>(null)
+  const [dateError, setDateError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -74,6 +75,10 @@ export function MemoryForm({ initial, submitLabel, onCancel, onSubmit }: MemoryF
   const submit = useCallback(async () => {
     if (!title.trim()) {
       setTitleError(COPY.add.titleRequired)
+      return
+    }
+    if (!date.trim()) {
+      setDateError(COPY.add.dateRequired)
       return
     }
 
@@ -121,7 +126,15 @@ export function MemoryForm({ initial, submitLabel, onCancel, onSubmit }: MemoryF
           error={titleError ?? undefined}
         />
 
-        <DateField label={COPY.add.dateLabel} value={date} onChangeText={setDate} />
+        <DateField
+          label={COPY.add.dateLabel}
+          value={date}
+          onChangeText={(next) => {
+            setDate(next)
+            setDateError(null)
+          }}
+          error={dateError ?? undefined}
+        />
 
         <Input
           label={COPY.add.captionLabel}

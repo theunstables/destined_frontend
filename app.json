@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Tales of Two",
+    "name": "Destined",
     "slug": "tales-of-two",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -30,7 +30,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#FDF7FF",
+          "backgroundColor": "#FDFBF7",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }

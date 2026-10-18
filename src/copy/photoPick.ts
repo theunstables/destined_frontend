@@ -18,6 +18,8 @@ export const PHOTO_PICK_COPY = {
     PERMISSION_DENIED:
       'We need permission to open your photos. You can turn it on in your device settings.',
     UNAVAILABLE: 'No photo library is available on this device.',
+    TOO_LARGE: 'That photo is larger than 25 MB. Choose a smaller one.',
+    UNSUPPORTED_TYPE: 'That photo format is not supported. Choose a JPEG, PNG, WebP, or HEIC image.',
     UNKNOWN: 'That photo could not be opened. Try another one.',
   },
 

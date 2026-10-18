@@ -26,6 +26,8 @@ import { VoiceNoteRecorder } from '@/modules/module-03-chat/components/VoiceNote
 import { useBackTo } from '@/hooks/useBackTo'
 import { groupPositions } from '@/modules/module-03-chat/grouping'
 import { useChatStore } from '@/modules/module-03-chat/state/chatStore'
+import { useRelationshipStore } from '@/state/relationshipStore'
+import { callSignalingService } from '@/services/calls'
 
 /** Chat — Conversation. Figma `Ziyu` 3390:665 / 3390:521 / 3390:585. */
 export function ConversationScreen() {
@@ -38,6 +40,23 @@ export function ConversationScreen() {
   const onBack = useBackTo('/(app)/chat')
   const scroll = useRef<ScrollView>(null)
   const loaded = useRef(false)
+  const partnerName = useRelationshipStore((state) => state.partner?.name)
+    ?? CHAT_COPY.home.defaultPartnerName
+  const startCall = (mode: 'voice' | 'video') => {
+    const callId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+    router.push({
+      pathname: mode === 'video' ? '/(app)/chat/moment/video' : '/(app)/chat/moment/voice',
+      params: { callId },
+    })
+  }
+
+  useEffect(() => callSignalingService.subscribe((signal) => {
+    if (signal.action !== 'invite') return
+    router.push({
+      pathname: signal.mode === 'video' ? '/(app)/chat/moment/video' : '/(app)/chat/moment/voice',
+      params: { callId: signal.callId, incoming: 'true' },
+    })
+  }), [router])
 
   useEffect(() => {
     if (loaded.current) return
@@ -159,10 +178,11 @@ export function ConversationScreen() {
             inset for itself, since nothing above it is providing one. */}
         <View style={{ paddingTop: insets.top }}>
           <ChatHeader
+            partnerName={partnerName}
             onBack={onBack}
-            onVideoCall={() => router.push('/(app)/chat/moment/video')}
-            onVoiceCall={() => router.push('/(app)/chat/moment/voice')}
             isPartnerTyping={s.isPartnerTyping}
+            onVoiceCall={() => startCall('voice')}
+            onVideoCall={() => startCall('video')}
           />
         </View>
 
@@ -247,6 +267,7 @@ export function ConversationScreen() {
           />
         ) : (
           <Composer
+            partnerName={partnerName}
             value={s.draft}
             onChangeText={s.setDraft}
             // Trimmed here, not in the store: `Composer` hands over the raw

@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { SETTINGS_BILLING_COPY as COPY } from '@/copy/settingsBilling'
 import { SectionPanel } from '@/design-system/patterns/SectionPanel'
@@ -7,7 +7,8 @@ import { SettingsRow } from '@/design-system/patterns/SettingsRow'
 import { SettingsScreenLayout } from '@/design-system/patterns/SettingsScreenLayout'
 import { Text } from '@/design-system/primitives/Text'
 import { PlanCard } from '@/modules/module-05-profile/components/PlanCard'
-import { MOCK_INVOICES, MOCK_PLAN, MOCK_PREMIUM } from '@/modules/module-05-profile/data/mock'
+import { MOCK_INVOICES, MOCK_PLAN, MOCK_PREMIUM, type Invoice, type Plan } from '@/modules/module-05-profile/data/mock'
+import { billingService } from '@/services/billing'
 
 /**
  * M05-S17 — Settings → Billing & Subscription.
@@ -19,16 +20,24 @@ import { MOCK_INVOICES, MOCK_PLAN, MOCK_PREMIUM } from '@/modules/module-05-prof
  */
 export function BillingScreen() {
   const router = useRouter()
-  const [didRestore, setDidRestore] = useState(false)
+  const [plans, setPlans] = useState<Plan[]>([MOCK_PLAN, MOCK_PREMIUM])
+  const [invoices, setInvoices] = useState<Invoice[]>(MOCK_INVOICES)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void billingService.get().then((summary) => {
+      setPlans(summary.plans)
+      setInvoices(summary.invoices)
+    }).catch(() => setError('Billing details could not be loaded.'))
+  }, [])
 
   const goBack = useCallback(() => router.back(), [router])
-  const restore = useCallback(() => setDidRestore(true), [])
 
   return (
     <SettingsScreenLayout title={COPY.title} lede={COPY.lede} onBack={goBack}>
       <SectionPanel title={COPY.currentGroup}>
         <PlanCard
-          plan={MOCK_PLAN}
+          plan={plans.find((plan) => plan.isCurrent) ?? plans[0] ?? MOCK_PLAN}
           currentLabel={COPY.currentLabel}
           freeLabel={COPY.freeForever}
           periodLabel={COPY.perYear}
@@ -42,7 +51,7 @@ export function BillingScreen() {
         </Text>
 
         <PlanCard
-          plan={MOCK_PREMIUM}
+          plan={plans.find((plan) => !plan.isCurrent) ?? MOCK_PREMIUM}
           currentLabel={COPY.currentLabel}
           freeLabel={COPY.free}
           periodLabel={COPY.perYear}
@@ -51,23 +60,18 @@ export function BillingScreen() {
       </SectionPanel>
 
       <SectionPanel title={COPY.paymentGroup}>
+        {error ? <Text variant="footnote" tone="error">{error}</Text> : null}
         <SettingsRow icon="credit-card" label={COPY.paymentMethod} value={COPY.paymentNone} />
-        <SettingsRow icon="refresh-cw" label={COPY.restore} onPress={restore} />
-
-        {didRestore ? (
-          <Text variant="footnote" tone="body">
-            {COPY.restoreNothing}
-          </Text>
-        ) : null}
+        <SettingsRow icon="refresh-cw" label={COPY.restore} detail={COPY.restoreNothing} />
       </SectionPanel>
 
       <SectionPanel title={COPY.invoicesGroup}>
-        {MOCK_INVOICES.length === 0 ? (
+        {invoices.length === 0 ? (
           <Text variant="footnote" tone="body">
             {COPY.invoicesEmpty}
           </Text>
         ) : (
-          MOCK_INVOICES.map((invoice) => (
+          invoices.map((invoice) => (
             <SettingsRow key={invoice.id} icon="file-text" label={invoice.date} />
           ))
         )}

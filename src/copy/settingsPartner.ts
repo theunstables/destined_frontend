@@ -25,10 +25,16 @@ export const SETTINGS_PARTNER_COPY = {
 
   dangerGroup: 'Ending it',
   unlink: 'Unlink partner',
-  unlinkDetail: 'Leave the space you share.',
+  unlinkDetail: 'Pause sharing and start a seven-day grace period.',
   unlinkTitle: 'Unlink from your partner?',
   unlinkBody:
-    'Your shared space closes for both of you. Your memories, messages and dates stay on this device but stop being shared. You would each need a new invite to pair again.',
+    'Sharing pauses now. The unlink completes after seven days unless either of you cancels it. Your shared records are not erased by this request.',
   unlinkCancel: 'Stay paired',
-  unlinkConfirm: 'Unlink',
+  unlinkConfirm: 'Start unlinking',
+  unlinkPending: 'Unlinking is scheduled. Sharing is paused during the grace period.',
+  unlinkRequestedByPartner: 'Your partner requested unlinking. Sharing is paused during the grace period.',
+  unlinkDatePrefix: 'Scheduled for',
+  cancelUnlink: 'Cancel unlink request',
+  cancelUnlinkComplete: 'The unlink request was cancelled.',
+  lifecycleError: 'The pairing change could not be saved. Try again.',
 } as const

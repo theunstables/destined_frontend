@@ -1,13 +1,13 @@
 import { View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
+import { useEffect, useState } from 'react'
 
 import { useBackTo } from '@/hooks/useBackTo'
 import { COMPATIBILITY_COPY as COPY } from '@/copy/compatibility'
 import { AppScreenLayout } from '@/design-system/patterns/AppScreenLayout'
 import { Card } from '@/design-system/primitives/Card'
 import { Text } from '@/design-system/primitives/Text'
-import { USE_SAMPLE_CONTENT } from '@/sample'
-import { SAMPLE_HOME } from '@/sample/home'
+import { compatibilityService, type Compatibility } from '@/services/compatibility'
 import { formatDate } from '@/utils/formatStoryDate'
 import { elementSynergy, ZODIAC_ELEMENT, ZODIAC_LABEL, ZODIAC_TRAIT, zodiacSignFor } from '@/utils/zodiac'
 
@@ -26,20 +26,28 @@ import { elementSynergy, ZODIAC_ELEMENT, ZODIAC_LABEL, ZODIAC_TRAIT, zodiacSignF
  */
 export function CompatibilityScreen() {
   const back = useBackTo('/(app)/home')
+  const [compatibility, setCompatibility] = useState<Compatibility | null>(null)
+  const [error, setError] = useState(false)
 
-  if (!USE_SAMPLE_CONTENT) {
+  useEffect(() => {
+    void compatibilityService.get().then(setCompatibility).catch(() => setError(true))
+  }, [])
+
+  if (!compatibility || compatibility.people.length < 2) {
     return (
       <AppScreenLayout activeTab="home" onBack={back}>
         <Text variant="body" tone="body">
-          {COPY.eyebrow}
+          {error
+            ? 'Compatibility details could not be loaded.'
+            : compatibility ? 'Add both birthdays in Personal details to see your compatibility.' : 'Loading compatibility…'}
         </Text>
       </AppScreenLayout>
     )
   }
 
-  const { you, partner } = SAMPLE_HOME.compatibility
+  const [you, partner] = compatibility.people
   const people = [you, partner]
-  const signs = people.map((person) => zodiacSignFor(person.birthday))
+  const signs = people.map((person) => person.birthday ? zodiacSignFor(person.birthday) : null)
   const [youSign, partnerSign] = signs
 
   return (
@@ -63,7 +71,7 @@ export function CompatibilityScreen() {
                 {person.name}
               </Text>
               <Text variant="caption" tone="body">
-                {COPY.born(formatDate(person.birthday))}
+                {person.birthday ? COPY.born(formatDate(person.birthday)) : 'Birthday not added'}
               </Text>
               {sign ? (
                 <Text variant="labelStrong" tone="brand">
@@ -105,7 +113,9 @@ export function CompatibilityScreen() {
           {COPY.detailsHeading}
         </Text>
         <Text variant="footnote" tone="body">
-          {SAMPLE_HOME.daysTogether.toLocaleString()} days together and counting.
+          {compatibility.daysTogether == null
+            ? 'Add the day you met to complete this story.'
+            : `${compatibility.daysTogether.toLocaleString()} days together and counting.`}
         </Text>
       </View>
     </AppScreenLayout>

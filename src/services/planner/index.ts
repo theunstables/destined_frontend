@@ -1,3 +1,5 @@
+import { isMockMode } from '@/config/env'
+import { createHttpPlannerService } from '@/services/planner/http'
 import { createMockPlannerService } from '@/services/planner/mock'
 
 export type * from '@/services/planner/types'
@@ -17,4 +19,6 @@ export type * from '@/services/planner/types'
  * `sample/plannerCatalogue.ts` is deleted at the same time; it is the mock's
  * data and has no other reader.
  */
-export const plannerService = createMockPlannerService()
+export const plannerService = isMockMode
+	? createMockPlannerService()
+	: createHttpPlannerService()

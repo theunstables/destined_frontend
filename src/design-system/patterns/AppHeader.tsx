@@ -9,6 +9,8 @@ import { Text } from '@/design-system/primitives/Text'
 type AppHeaderProps = {
   /** When given, a back button is rendered. Omit on an entry-point screen. */
   onBack?: () => void
+  /** Raised rounded treatment used by the redesigned auth journey. */
+  floating?: boolean
 }
 
 /**
@@ -23,11 +25,12 @@ type AppHeaderProps = {
  * because it is the only frame that got a header pass; it belongs on every
  * screen that shows the wordmark.
  */
-export function AppHeader({ onBack }: AppHeaderProps) {
+export function AppHeader({ onBack, floating = false }: AppHeaderProps) {
   const { theme } = useUnistyles()
+  styles.useVariants({ floating })
 
   return (
-    <View style={styles.header}>
+    <View style={styles.header} testID="app-header">
       {onBack ? (
         <IconButton
           icon="arrow-left"
@@ -63,6 +66,20 @@ const styles = StyleSheet.create((theme) => ({
     // effect; the blur via expo-glass-effect is deferred until the flat version
     // is verified on device (spec open item 7).
     backgroundColor: theme.colors.surface.page,
+    variants: {
+      floating: {
+        true: {
+          marginHorizontal: theme.spacing.lg,
+          marginTop: theme.spacing.sm,
+          borderWidth: 1,
+          borderColor: theme.colors.border.hairline,
+          borderRadius: theme.radii.panel,
+          backgroundColor: theme.colors.surface.card,
+          boxShadow: theme.elevation.card,
+        },
+        false: {},
+      },
+    },
   },
   // The spacer opposite the back control. Matches `IconButton`'s own `md`
   // diameter so the wordmark between them stays centred.

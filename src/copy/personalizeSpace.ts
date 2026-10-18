@@ -9,6 +9,7 @@ import { BRAND } from '@/config/brand'
  * name and a short name and offers the style choice explicitly.
  */
 export const PERSONALIZE_SPACE_COPY = {
+  eyebrow: 'Personalize Space',
   heading: 'One last little touch.',
   lede: `Make your ${BRAND.name} feel like yours.`,
   nameLabel: 'Couple display name',

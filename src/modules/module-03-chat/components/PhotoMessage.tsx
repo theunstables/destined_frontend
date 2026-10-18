@@ -1,6 +1,8 @@
 import { Image } from 'expo-image'
-import { useWindowDimensions } from 'react-native'
+import { Pressable, useWindowDimensions, View } from 'react-native'
 import { useUnistyles } from 'react-native-unistyles'
+import { Text } from '@/design-system/primitives/Text'
+import { useRemoteMediaPermission } from '@/hooks/useRemoteMediaPermission'
 
 /**
  * The widest a photo bubble is ever drawn, however wide the device is.
@@ -38,6 +40,7 @@ type Props = {
 export function PhotoMessage({ uri, time }: Props) {
   const { theme } = useUnistyles()
   const { width: windowWidth } = useWindowDimensions()
+  const media = useRemoteMediaPermission(uri)
 
   /*
    * WHY THIS IS COMPUTED AND NOT A CONSTANT.
@@ -60,6 +63,23 @@ export function PhotoMessage({ uri, time }: Props) {
    */
   const contentWidth = Math.min(windowWidth, theme.layout.column)
   const width = Math.min(MAX_PHOTO_WIDTH, contentWidth * 0.76 - theme.spacing.lg * 2)
+
+  if (!media.allowed) {
+    return (
+      <Pressable
+        onPress={media.allow}
+        accessibilityRole="button"
+        accessibilityLabel="Download photo"
+      >
+        <View style={{
+          width, aspectRatio: 4 / 3, borderRadius: theme.radii.panel,
+          backgroundColor: theme.colors.surface.field, alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Text variant="footnote" tone="body" align="center">Download photo</Text>
+        </View>
+      </Pressable>
+    )
+  }
 
   return (
     <Image

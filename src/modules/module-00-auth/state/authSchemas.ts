@@ -14,13 +14,10 @@ const email = z
  * them disagreeing — a user being told every rule passes while the form refuses
  * to submit.
  *
- * These ARE the contract's policy, verbatim from `schemas/VALIDATION.md`:
- * 8–128 characters, at least one letter and one number. The client must be
- * neither stricter nor looser. It was previously stricter — it demanded a
- * special character the contract does not ask for, so it rejected passwords the
- * server accepts — and simultaneously looser, since it checked neither a letter
- * nor the maximum, so two classes of password reached the server only to come
- * back `422 WEAK_PASSWORD`.
+ * These are the approved A03 product rules: 8–128 characters, at least one
+ * number, and at least one non-whitespace special character. The client and
+ * backend derive their validation from this same contract so the live checklist
+ * cannot claim a password is ready and then receive a server rejection.
  */
 export const PASSWORD_RULES = [
   {
@@ -28,8 +25,12 @@ export const PASSWORD_RULES = [
     label: '8–128 characters',
     test: (v: string) => v.length >= 8 && v.length <= 128,
   },
-  { id: 'letter', label: 'One letter', test: (v: string) => /[A-Za-z]/.test(v) },
   { id: 'number', label: 'One number', test: (v: string) => /\d/.test(v) },
+  {
+    id: 'special',
+    label: 'One special character',
+    test: (v: string) => /[^A-Za-z0-9\s]/.test(v),
+  },
 ] as const
 
 const strongPassword = PASSWORD_RULES.reduce<z.ZodType<string>>(

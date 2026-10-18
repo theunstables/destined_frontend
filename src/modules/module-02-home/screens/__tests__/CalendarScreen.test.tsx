@@ -4,6 +4,7 @@ import { CALENDAR_COPY as COPY } from '@/copy/calendar'
 import { CalendarScreen, monthGrid } from '@/modules/module-02-home/screens/CalendarScreen'
 import { dateInDays } from '@/modules/module-02-home/comingUp'
 import { SAMPLE_HOME } from '@/sample/home'
+import { useCalendarStore } from '@/state/calendarStore'
 import { useStoryStore } from '@/state/storyStore'
 import { renderScreen } from '@/test/renderScreen'
 
@@ -18,6 +19,7 @@ beforeEach(() => {
   mockPush.mockClear()
   mockBack.mockClear()
   useStoryStore.getState().reset()
+  useCalendarStore.getState().hydrate([])
 })
 
 describe('monthGrid', () => {
@@ -123,6 +125,30 @@ describe('Calendar screen', () => {
     expect(mockPush).toHaveBeenCalledWith({
       pathname: '/(app)/occasions/[key]',
       params: { key: 'anniversary' },
+    })
+  })
+
+  it('marks and opens a provider-backed calendar event', async () => {
+    const user = userEvent.setup()
+    const today = new Date()
+    const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    useCalendarStore.getState().hydrate([{
+      id: 'date-night-1',
+      title: 'Dinner reservation',
+      date,
+      location: 'Our favorite place',
+      kind: 'dateNight',
+      repeatsAnnually: false,
+      createdAt: new Date().toISOString(),
+    }])
+
+    await renderScreen(<CalendarScreen />)
+
+    expect(screen.getByTestId(`calendar-dot-${today.getDate()}`)).toBeTruthy()
+    await user.press(screen.getByLabelText('Dinner reservation'))
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/(app)/occasions/[key]',
+      params: { key: 'date-night-1' },
     })
   })
 })

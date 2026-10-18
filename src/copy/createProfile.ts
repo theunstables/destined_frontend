@@ -7,6 +7,7 @@
  * a form being built anyway — adding them later means migrating stored profiles.
  */
 export const CREATE_PROFILE_COPY = {
+  eyebrow: 'Create Profile',
   heading: "Let's make this yours.",
   lede: 'This is how your partner will see you.',
 
@@ -33,6 +34,8 @@ export const CREATE_PROFILE_COPY = {
     CODE_INVALID: 'Something went wrong. Try again.',
     CODE_EXPIRED: 'Something went wrong. Try again.',
     CANNOT_PAIR_WITH_SELF: 'Something went wrong. Try again.',
+    ALREADY_PAIRED: 'This account is already connected. Reopen the app to restore your space.',
+    EMAIL_NOT_VERIFIED: 'Verify your email before creating your profile.',
     NETWORK: 'No connection. Check your network and try again.',
     UNKNOWN: 'Something went wrong. Try again.',
   },

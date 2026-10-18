@@ -7,16 +7,13 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { WELCOME_COPY } from '@/copy/welcome'
 import { Button } from '@/design-system/primitives/Button'
-import { Text } from '@/design-system/primitives/Text'
-import { AppHeader } from '@/design-system/patterns/AppHeader'
 import { FooterPrompt } from '@/design-system/patterns/FooterPrompt'
 import { ThemedStatusBar } from '@/design-system/patterns/ThemedStatusBar'
-import { AmbientLayer } from '@/modules/module-00-auth/components/AmbientLayer'
-import { HeroCollage } from '@/modules/module-00-auth/components/HeroCollage'
 import { PrivacyFooter } from '@/modules/module-00-auth/components/PrivacyFooter'
+import { TwoWorldsReveal } from '@/modules/module-00-auth/components/TwoWorldsReveal'
 
 /**
- * M00-S01 — Welcome to Tales of Two. Figma 522:266.
+ * A01 — the finalized Destined two-worlds reveal and welcome actions.
  *
  * The first screen a new user sees. Presentation only: no session check, no
  * auth. Both buttons hand off to Module 00's other screens.
@@ -43,43 +40,10 @@ export function WelcomeScreen() {
       <ThemedStatusBar />
 
       <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        {/* No `onBack`: Welcome is the entry point, so there is nowhere back to. */}
-        <AppHeader />
-
         <View style={styles.main}>
-          <AmbientLayer />
-
           <View testID="welcome-content" style={styles.content}>
             <View style={styles.heroBlock}>
-              <HeroCollage />
-            </View>
-
-            <View testID="welcome-copy-block" style={styles.copyBlock}>
-              {/*
-                Its own View, gap-less: `copyBlock`'s `gap` used to apply
-                between these two lines as well as between the headline and
-                the subtitle below it, so the two halves of one headline sat
-                as far apart as the headline sat from the subtitle — it read
-                as two separate lines rather than one two-line headline. The
-                lines stay separate Text nodes (not a joined `\n` string) so
-                `WelcomeScreen.test.tsx` can still find `headlineLines[0]` on
-                its own; only the line-height governs their spacing now.
-              */}
-              <View>
-                {WELCOME_COPY.headlineLines.map((line) => (
-                  <Text key={line} variant="h1" tone="heading" align="center">
-                    {line}
-                  </Text>
-                ))}
-              </View>
-
-              <View style={styles.subtitleWrap}>
-                {WELCOME_COPY.subtitleLines.map((line) => (
-                  <Text key={line} variant="body" tone="body" align="center">
-                    {line}
-                  </Text>
-                ))}
-              </View>
+              <TwoWorldsReveal />
             </View>
 
             <View testID="welcome-actions" style={styles.actions}>
@@ -133,26 +97,13 @@ const styles = StyleSheet.create((theme) => ({
     // because this wraps the hero collage too, not just the copy below it.
     maxWidth: theme.layout.columnWide,
     alignSelf: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
   },
   heroBlock: {
-    flexShrink: 1,
+    flex: 1,
+    minHeight: 390,
     justifyContent: 'center',
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
-    paddingHorizontal: theme.spacing.heroInset,
-  },
-  copyBlock: {
-    gap: theme.spacing.md,
-    paddingBottom: theme.spacing.xxl,
-    alignSelf: 'center',
-    // The same column cap `AppScreenLayout` and `AuthScreenLayout` use, so the
-    // headline lines up with every other screen's content once it is wide
-    // enough to matter.
-    maxWidth: theme.layout.column,
-  },
-  subtitleWrap: {
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
   },
   actions: {
     width: '100%',

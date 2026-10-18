@@ -7,9 +7,13 @@ import { Text } from '@/design-system/primitives/Text'
 type StatusScreenProps = {
   /** Artwork above the copy. Decorative — hide it from the a11y tree yourself. */
   illustration?: ReactNode
+  /** Narrative metadata shown between the artwork and heading. */
+  eyebrow?: ReactNode
   heading: string
   lede?: string
   actions?: ReactNode
+  /** Announces a state reached in place, such as a successful mutation. */
+  announce?: boolean
 }
 
 /**
@@ -19,13 +23,27 @@ type StatusScreenProps = {
  * Extracted because two screens differing only in their copy and whether they
  * have buttons should not be two layouts.
  */
-export function StatusScreen({ illustration, heading, lede, actions }: StatusScreenProps) {
+export function StatusScreen({
+  illustration,
+  eyebrow,
+  heading,
+  lede,
+  actions,
+  announce = false,
+}: StatusScreenProps) {
   return (
     <View style={styles.container}>
       {illustration ? <View style={styles.illustration}>{illustration}</View> : null}
+      {eyebrow ? <View style={styles.eyebrow}>{eyebrow}</View> : null}
 
       <View style={styles.copy}>
-        <Text variant="h2" tone="heading" align="center">
+        <Text
+          variant="h2"
+          tone="heading"
+          align="center"
+          accessibilityRole="header"
+          accessibilityLiveRegion={announce ? 'polite' : 'none'}
+        >
           {heading}
         </Text>
 
@@ -49,6 +67,10 @@ const styles = StyleSheet.create((theme) => ({
   illustration: {
     alignItems: 'center',
     paddingBottom: theme.spacing.xxxl,
+  },
+  eyebrow: {
+    width: '100%',
+    paddingBottom: theme.spacing.sm,
   },
   copy: {
     width: '100%',

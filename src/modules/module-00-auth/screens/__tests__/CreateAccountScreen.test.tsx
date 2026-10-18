@@ -4,6 +4,7 @@ import { BRAND } from '@/config/brand'
 import { CREATE_ACCOUNT_COPY as COPY } from '@/copy/createAccount'
 import { AUTH_ERROR_COPY } from '@/copy/errors'
 import { CreateAccountScreen } from '@/modules/module-00-auth/screens/CreateAccountScreen'
+import { authService } from '@/services/auth'
 import { renderScreen } from '@/test/renderScreen'
 
 const mockPush = jest.fn()
@@ -23,9 +24,14 @@ describe('CreateAccountScreen', () => {
     mockPush.mockClear()
   })
 
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
   it('renders its blocks from copy', async () => {
     await renderScreen(<CreateAccountScreen />)
 
+    expect(screen.getByText(COPY.eyebrow)).toBeTruthy()
     // Rendered as one Text with a newline, so the leading comes from the line
     // height rather than a container gap.
     expect(screen.getByText(COPY.headingLines.join('\n'))).toBeTruthy()
@@ -74,6 +80,23 @@ describe('CreateAccountScreen', () => {
     await waitFor(() => {
       expect(screen.getByLabelText(COPY.passwordLabel).props.accessibilityHint).toBe(
         '8–128 characters',
+      )
+    })
+    expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('attaches a server-side weak-password rejection to the password field', async () => {
+    jest.spyOn(authService, 'signUp').mockResolvedValueOnce({
+      ok: false,
+      error: { code: 'WEAK_PASSWORD' },
+    })
+    await renderScreen(<CreateAccountScreen />)
+
+    await fillAndSubmit('new@example.com', 'hunter22!')
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(COPY.passwordLabel).props.accessibilityHint).toBe(
+        AUTH_ERROR_COPY.WEAK_PASSWORD,
       )
     })
     expect(mockPush).not.toHaveBeenCalled()

@@ -6,6 +6,7 @@ import { BRAND } from '@/config/brand'
  * `BRAND.name` is interpolated, never typed — the rule in `config/brand.ts`.
  */
 export const CREATE_ACCOUNT_COPY = {
+  eyebrow: 'Create account',
   /** Figma typesets the heading across two lines. */
   headingLines: ["Let's make this", 'official.'],
   lede: `Create your private ${BRAND.name} account.`,

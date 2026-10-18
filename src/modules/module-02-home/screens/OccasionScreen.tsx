@@ -1,12 +1,14 @@
+import { Feather } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { useBackTo } from '@/hooks/useBackTo'
 import { OCCASION_COPY as COPY } from '@/copy/occasion'
 import { AppScreenLayout } from '@/design-system/patterns/AppScreenLayout'
+import { ConfirmDialog } from '@/components/feedback/ConfirmDialog'
 import { Button } from '@/design-system/primitives/Button'
 import { Text } from '@/design-system/primitives/Text'
 import { dateInDays, findComingUp, isBirthday } from '@/modules/module-02-home/comingUp'
@@ -15,8 +17,11 @@ import { PhotoMemoryCard } from '@/modules/module-03-memories/components/PhotoMe
 import { USE_SAMPLE_CONTENT } from '@/sample'
 import { SAMPLE_HOME } from '@/sample/home'
 import { SAMPLE_MEMORIES } from '@/sample/memories'
+import { useCalendarStore } from '@/state/calendarStore'
+import { calendarService } from '@/services/calendar'
 import { useStoryStore } from '@/state/storyStore'
-import { formatDate } from '@/utils/formatStoryDate'
+import { daysUntilNextOccurrence } from '@/utils/daysUntil'
+import { formatCalendarDateLong } from '@/utils/dateUtils'
 
 /** A `Date` as the `YYYY-MM-DD` that `formatDate` understands. */
 function iso(d: Date) {
@@ -40,11 +45,34 @@ export function OccasionScreen() {
   const back = useBackTo('/(app)/home')
   const { key } = useLocalSearchParams<{ key: string }>()
   const keyDates = useStoryStore((state) => state.keyDates)
+  const calendarEvent = useCalendarStore((state) => state.events.find((event) => event.id === key))
+  const removeCalendarEvent = useCalendarStore((state) => state.remove)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleteError, setDeleteError] = useState(false)
 
-  const row = findComingUp(keyDates, decodeURIComponent(key ?? ''))
+  const storyRow = findComingUp(keyDates, decodeURIComponent(key ?? ''))
+  const eventDays = daysUntilNextOccurrence(calendarEvent?.date)
+  const row = calendarEvent && eventDays !== null
+    ? { key: calendarEvent.id, label: calendarEvent.title, days: eventDays }
+    : storyRow
 
   const addMemory = useCallback(() => router.push('/(app)/memories/new'), [router])
   const calendar = useCallback(() => router.push('/(app)/calendar'), [router])
+  const edit = useCallback(() => {
+    if (!calendarEvent) return
+    router.push(`/(app)/calendar-events/${calendarEvent.id}/edit`)
+  }, [calendarEvent, router])
+  const remove = useCallback(async () => {
+    if (!calendarEvent) return
+    const result = await calendarService.remove({ id: calendarEvent.id })
+    setConfirmingDelete(false)
+    if (!result.ok) {
+      setDeleteError(true)
+      return
+    }
+    removeCalendarEvent(calendarEvent.id)
+    router.replace('/(app)/calendar')
+  }, [calendarEvent, removeCalendarEvent, router])
   const openMemory = useCallback((id: string) => router.push(`/(app)/memories/${id}`), [router])
 
   if (!row) {
@@ -59,26 +87,33 @@ export function OccasionScreen() {
   }
 
   const birthday = isBirthday(row)
-  const when = formatDate(iso(dateInDays(row.days)))
+  const when = calendarEvent
+    ? formatCalendarDateLong(calendarEvent.date)
+    : formatCalendarDateLong(iso(dateInDays(row.days)))
 
   // Only a birthday gets the spotlight photo and the past-birthdays rail; a
   // first-date anniversary borrowing a birthday portrait would be nonsense.
-  const photoUri = birthday && USE_SAMPLE_CONTENT ? SAMPLE_HOME.spotlight.photoUri : undefined
+  const photoUri = birthday && storyRow?.sample && USE_SAMPLE_CONTENT
+    ? SAMPLE_HOME.spotlight.photoUri
+    : undefined
   const past =
-    birthday && USE_SAMPLE_CONTENT
+    birthday && storyRow?.sample && USE_SAMPLE_CONTENT
       ? SAMPLE_MEMORIES.filter((m) => m.tags.includes('Birthdays'))
       : []
 
   return (
     <AppScreenLayout activeTab="home" onBack={back}>
       <View style={styles.head}>
+        <Text variant="caption" tone="brand">
+          {COPY.eyebrow}
+        </Text>
         <View style={styles.chip}>
           <Text variant="caption" tone="brand">
             {COPY.countdown(row.days).toUpperCase()}
           </Text>
         </View>
 
-        <Text variant="h1" tone="heading">
+        <Text variant="display" tone="heading">
           {row.label}
         </Text>
 
@@ -103,6 +138,38 @@ export function OccasionScreen() {
           transition={200}
           testID="occasion-photo"
         />
+      ) : (
+        <View style={styles.occasionHero} testID="occasion-illustration">
+          <View style={styles.occasionIcon}>
+            <Feather
+              name={birthday ? 'gift' : 'calendar'}
+              size={34}
+              color={theme.colors.brand.primary}
+            />
+          </View>
+          <Text variant="labelStrong" tone="heading" align="center">
+            {COPY.countdown(row.days)}
+          </Text>
+        </View>
+      )}
+
+      {calendarEvent?.location || calendarEvent?.notes ? (
+        <View style={styles.section}>
+          <Text variant="labelStrong" tone="heading">
+            {COPY.detailsLabel}
+          </Text>
+          <View style={styles.detailCard}>
+            {calendarEvent.location ? (
+              <View style={styles.detailRow}>
+                <Feather name="map-pin" size={16} color={theme.colors.brand.primary} />
+                <Text variant="footnote" tone="body">{calendarEvent.location}</Text>
+              </View>
+            ) : null}
+            {calendarEvent.notes ? (
+              <Text variant="footnote" tone="body">{calendarEvent.notes}</Text>
+            ) : null}
+          </View>
+        </View>
       ) : null}
 
       <View style={styles.actions}>
@@ -114,7 +181,19 @@ export function OccasionScreen() {
         ) : (
           <Button label={COPY.addMemory} onPress={addMemory} variant="soft" />
         )}
+        {calendarEvent ? (
+          <>
+            <Button label={COPY.edit} onPress={edit} variant="outline" />
+            <Button label={COPY.delete} onPress={() => setConfirmingDelete(true)} variant="link" />
+          </>
+        ) : null}
       </View>
+
+      {deleteError ? (
+        <Text variant="footnote" tone="error" accessibilityRole="alert">
+          {COPY.deleteError}
+        </Text>
+      ) : null}
 
       {birthday ? (
         <View style={styles.section}>
@@ -139,6 +218,17 @@ export function OccasionScreen() {
       ) : null}
 
       <Button label={COPY.calendar} onPress={calendar} variant="link" />
+
+      <ConfirmDialog
+        visible={confirmingDelete}
+        title={COPY.deleteConfirm.title}
+        body={COPY.deleteConfirm.body}
+        confirmLabel={COPY.deleteConfirm.confirm}
+        cancelLabel={COPY.deleteConfirm.cancel}
+        onConfirm={remove}
+        onCancel={() => setConfirmingDelete(false)}
+        destructive
+      />
     </AppScreenLayout>
   )
 }
@@ -159,5 +249,37 @@ const styles = StyleSheet.create((theme) => ({
   },
   section: {
     gap: theme.spacing.md,
+  },
+  occasionHero: {
+    minHeight: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border.subtle,
+    borderRadius: theme.radii.field,
+    backgroundColor: theme.colors.surface.card,
+    boxShadow: theme.elevation.card,
+  },
+  occasionIcon: {
+    width: 78,
+    height: 78,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radii.pill,
+    backgroundColor: theme.colors.surface.soft,
+  },
+  detailCard: {
+    gap: theme.spacing.md,
+    padding: theme.spacing.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border.subtle,
+    borderRadius: theme.radii.field,
+    backgroundColor: theme.colors.surface.card,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
   },
 }))

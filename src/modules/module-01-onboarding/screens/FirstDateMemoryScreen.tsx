@@ -11,7 +11,9 @@ import { Button } from '@/design-system/primitives/Button'
 import { DateField } from '@/design-system/primitives/DateField'
 import { Input } from '@/design-system/primitives/Input'
 import { Text } from '@/design-system/primitives/Text'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
+import { StoryProgress } from '@/modules/module-01-onboarding/components/StoryProgress'
 import { useRelationshipStore } from '@/state/relationshipStore'
 import { useStoryStore } from '@/state/storyStore'
 
@@ -60,6 +62,7 @@ export function FirstDateMemoryScreen() {
   return (
     <AuthScreenLayout onBack={back}>
       <View style={styles.copy}>
+        <AuthEyebrow align="center">{COPY.eyebrow}</AuthEyebrow>
         <Text variant="h1" tone="heading" align="center">
           {COPY.heading}
         </Text>
@@ -106,13 +109,14 @@ export function FirstDateMemoryScreen() {
         <Button label={COPY.submit} onPress={submit} />
         <Button label={COPY.skip} onPress={next} variant="link" />
       </View>
+      <StoryProgress step={4} />
     </AuthScreenLayout>
   )
 }
 
 const styles = StyleSheet.create((theme) => ({
   copy: {
-    gap: theme.spacing.xs,
+    gap: theme.spacing.sm,
     paddingBottom: theme.spacing.xxxl,
   },
   photo: {

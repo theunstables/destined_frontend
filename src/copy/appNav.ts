@@ -1,9 +1,11 @@
+import { hasCapability } from '@/config/capabilities'
+
 /**
  * The app's bottom navigation, shared by every screen inside `(app)`.
  *
- * Five destinations, all of them built. `BottomNav` still honours `live: false`
- * and renders such a tab disabled rather than hidden — see its own test — but
- * no tab needs that today, so the bar no longer carries a dead stop.
+ * The Plans prototype is available in mock mode only. Its domain has no backend
+ * contract, so API-backed builds render that tab disabled rather than implying
+ * that local sample mutations are shared or durable.
  *
  * PLANS sits third, between Memories and Chat, which is where Figma
  * `Tales of Two` / `New Features` (3482:965) draws it. That page's other frames
@@ -21,7 +23,7 @@ export const APP_NAV = {
   tabs: [
     { key: 'home', label: 'Home', icon: 'home', live: true, href: '/(app)/home' },
     { key: 'memories', label: 'Memories', icon: 'book-open', live: true, href: '/(app)/memories' },
-    { key: 'plans', label: 'Plans', icon: 'compass', live: true, href: '/(app)/plans' },
+    { key: 'plans', label: 'Plans', icon: 'compass', live: hasCapability('plans'), href: '/(app)/plans' },
     { key: 'chat', label: 'Chat', icon: 'message-circle', live: true, href: '/(app)/chat' },
     { key: 'profile', label: 'Profile', icon: 'user', live: true, href: '/(app)/profile' },
   ],

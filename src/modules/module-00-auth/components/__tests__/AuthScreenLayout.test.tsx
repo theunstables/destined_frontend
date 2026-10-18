@@ -14,6 +14,18 @@ describe('AuthScreenLayout', () => {
     )
 
     expect(screen.getByText('Create your account')).toBeTruthy()
+    expect(screen.getByTestId('app-header').props.style).toEqual(
+      expect.objectContaining({
+        borderWidth: 1,
+        borderRadius: lavenderTheme.radii.panel,
+        backgroundColor: lavenderTheme.colors.surface.card,
+      }),
+    )
+    expect(screen.getByTestId('auth-screen-scroll').props.contentContainerStyle).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ paddingHorizontal: lavenderTheme.spacing.xxxl }),
+      ]),
+    )
   })
 
   // Same contract as `AppScreenLayout`'s column, and the same reason it is

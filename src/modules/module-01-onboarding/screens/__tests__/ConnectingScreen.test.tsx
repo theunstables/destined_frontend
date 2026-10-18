@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react-native'
+import { screen, userEvent, waitFor } from '@testing-library/react-native'
 
 import { CONNECTING_COPY as COPY } from '@/copy/connecting'
 import { ConnectingScreen } from '@/modules/module-01-onboarding/screens/ConnectingScreen'
@@ -21,6 +21,7 @@ describe('ConnectingScreen', () => {
   it('tells the user what is happening', async () => {
     await renderScreen(<ConnectingScreen />)
 
+    expect(screen.getByText(COPY.eyebrow)).toBeTruthy()
     expect(screen.getByText(COPY.heading)).toBeTruthy()
     expect(screen.getByText(COPY.lede)).toBeTruthy()
   })
@@ -41,7 +42,21 @@ describe('ConnectingScreen', () => {
     await renderScreen(<ConnectingScreen />)
 
     expect(await screen.findByText(COPY.errors.UNKNOWN)).toBeTruthy()
+    expect(screen.getByText(COPY.errorEyebrow)).toBeTruthy()
+    expect(screen.getAllByText(COPY.errorHeading)).toHaveLength(2)
+    expect(screen.getByText(COPY.errorLede)).toBeTruthy()
     expect(screen.getByRole('button', { name: COPY.retry })).toBeTruthy()
+    expect(screen.getByRole('button', { name: COPY.returnToCode })).toBeTruthy()
     expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('returns to code entry after a connection failure', async () => {
+    useRelationshipStore.getState().setPartner({ id: '', name: 'Chandu' })
+    await renderScreen(<ConnectingScreen />)
+
+    await screen.findByText(COPY.errors.UNKNOWN)
+    await userEvent.press(screen.getByRole('button', { name: COPY.returnToCode }))
+
+    expect(mockReplace).toHaveBeenCalledWith('/(onboarding)/enter-code')
   })
 })

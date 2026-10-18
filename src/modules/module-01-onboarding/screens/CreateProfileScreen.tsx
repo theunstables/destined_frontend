@@ -13,7 +13,9 @@ import { PhotoPicker } from '@/design-system/patterns/PhotoPicker'
 import { Button } from '@/design-system/primitives/Button'
 import { DateField } from '@/design-system/primitives/DateField'
 import { Text } from '@/design-system/primitives/Text'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
+import { FloatingInfoCard } from '@/modules/module-00-auth/components/FloatingInfoCard'
 import {
   profileSchema,
   type ProfileValues,
@@ -73,6 +75,7 @@ export function CreateProfileScreen() {
   return (
     <AuthScreenLayout onBack={back}>
       <View style={styles.copy}>
+        <AuthEyebrow align="center">{COPY.eyebrow}</AuthEyebrow>
         <Text variant="h1" tone="heading" align="center">
           {COPY.heading}
         </Text>
@@ -128,9 +131,12 @@ export function CreateProfileScreen() {
         />
 
         {formError ? (
-          <Text variant="footnote" tone="error" align="center">
-            {formError}
-          </Text>
+          <FloatingInfoCard
+            icon="alert-circle"
+            title="Profile not saved"
+            body={formError}
+            tone="error"
+          />
         ) : null}
 
         <Button label={COPY.submit} onPress={submit} loading={formState.isSubmitting} />
@@ -141,7 +147,7 @@ export function CreateProfileScreen() {
 
 const styles = StyleSheet.create((theme) => ({
   copy: {
-    gap: theme.spacing.xs,
+    gap: theme.spacing.sm,
     paddingBottom: theme.spacing.xxxl,
   },
   photo: {

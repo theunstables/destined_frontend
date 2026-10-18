@@ -2,6 +2,7 @@ import { screen, userEvent } from '@testing-library/react-native'
 
 import { APP_NAV } from '@/copy/appNav'
 import { HOME_DASHBOARD_COPY } from '@/copy/homeDashboard'
+import { TIMELINE_COPY } from '@/copy/timeline'
 import { PERSONALIZE_SPACE_COPY } from '@/copy/personalizeSpace'
 import { READY_TO_COME_HOME_COPY } from '@/copy/readyToComeHome'
 import { WELCOME_HOME_COPY } from '@/copy/welcomeHome'
@@ -11,9 +12,15 @@ import { ReadyToComeHomeScreen } from '@/modules/module-01-onboarding/screens/Re
 import { WelcomeHomeScreen } from '@/modules/module-01-onboarding/screens/WelcomeHomeScreen'
 import { SAMPLE_HOME } from '@/sample/home'
 import { SAMPLE_MEMORIES } from '@/sample/memories'
+import { useCalendarStore } from '@/state/calendarStore'
+import { useHomeStore } from '@/state/homeStore'
+import { useMemoriesStore } from '@/state/memoriesStore'
 import { useRelationshipStore } from '@/state/relationshipStore'
+import { useDailyQuestionStore } from '@/state/dailyQuestionStore'
+import { useRepairSignalStore } from '@/state/repairSignalStore'
 import { useSpaceStore } from '@/state/spaceStore'
 import { useStoryStore } from '@/state/storyStore'
+import { useTimelineStore } from '@/state/timelineStore'
 import { renderScreen } from '@/test/renderScreen'
 
 const mockPush = jest.fn()
@@ -29,6 +36,12 @@ beforeEach(() => {
   useStoryStore.getState().reset()
   useSpaceStore.getState().reset()
   useRelationshipStore.getState().reset()
+  useCalendarStore.getState().reset()
+  useHomeStore.getState().reset()
+  useMemoriesStore.getState().reset()
+  useDailyQuestionStore.getState().reset()
+  useRepairSignalStore.getState().reset()
+  useTimelineStore.getState().reset()
 })
 
 describe('M01-S20 Personalize Our Space', () => {
@@ -123,6 +136,49 @@ describe('M02-S01 Home Dashboard', () => {
     expect(screen.queryByText(SAMPLE_HOME.comingUp[0].label)).toBeNull()
   })
 
+  it('uses the provider-backed upcoming projection when it is available', async () => {
+    useCalendarStore.getState().hydrate([], [{
+      key: 'calendar-date-1',
+      label: 'Dinner reservation',
+      detail: 'Our favorite place',
+      days: 4,
+      date: '2027-04-10',
+      kind: 'dateNight',
+      source: 'calendar',
+    }])
+
+    await renderScreen(<HomeDashboardScreen />)
+
+    expect(screen.getByText('Dinner reservation')).toBeTruthy()
+    expect(screen.getByText('Our favorite place')).toBeTruthy()
+    expect(screen.queryByText(SAMPLE_HOME.comingUp[0].label)).toBeNull()
+  })
+
+  it('uses the hydrated Home aggregate for greeting, stats, and pulse', async () => {
+    useHomeStore.getState().hydrate({
+      coupleName: 'Olivia & Jordan',
+      greetingName: 'Olivia',
+      space: { name: 'Our World', shortName: 'OW', coverStyle: 'dawn' },
+      daysTogether: 42,
+      stats: [{ key: 'trips', icon: 'map', value: '3', label: 'Shared trips', unit: '' }],
+      comingUp: [],
+      recentMemories: [],
+      pulse: {
+        label: 'Relationship pulse',
+        value: '42',
+        unit: 'days',
+        caption: 'since we first met.',
+      },
+    })
+
+    await renderScreen(<HomeDashboardScreen />)
+
+    expect(screen.getByText(/Olivia/)).toBeTruthy()
+    expect(screen.getByText(HOME_DASHBOARD_COPY.daysTogetherLine(42))).toBeTruthy()
+    expect(screen.getByText('Shared trips')).toBeTruthy()
+    expect(screen.getByText('since we first met.')).toBeTruthy()
+  })
+
   it('greets the couple by their space name once it has one', async () => {
     useSpaceStore.getState().setSpace({ name: 'Our Little World', coverStyle: 'dawn' })
     // The couple greeting is for a partner who is actually there.
@@ -156,6 +212,13 @@ describe('M02-S01 Home Dashboard', () => {
     for (const stat of SAMPLE_HOME.stats) {
       expect(screen.getByText(stat.label)).toBeTruthy()
     }
+  })
+
+  it('surfaces the daily question and repair signal from their real providers', async () => {
+    await renderScreen(<HomeDashboardScreen />)
+
+    expect(await screen.findByText('What small thing made you smile today?')).toBeTruthy()
+    expect(await screen.findByText('Need a softer way back?')).toBeTruthy()
   })
 
   it('no longer offers quick actions that pointed at screens that do not exist', async () => {
@@ -223,6 +286,19 @@ describe('M02-S01 Home Dashboard', () => {
     await user.press(screen.getByLabelText(reminder.text))
 
     expect(mockPush).toHaveBeenCalledWith('/(app)/calendar')
+  })
+
+  it('opens the shared timeline from its Home story card', async () => {
+    useTimelineStore.getState().hydrate({
+      items: [{ id: 'memory-1', type: 'memory', date: '2025-02-14', title: 'Picnic' }],
+    })
+    const user = userEvent.setup()
+    await renderScreen(<HomeDashboardScreen />)
+
+    expect(screen.getByText(TIMELINE_COPY.homeLede(1))).toBeTruthy()
+    await user.press(screen.getByRole('button', { name: TIMELINE_COPY.open }))
+
+    expect(mockPush).toHaveBeenCalledWith('/(app)/timeline')
   })
 
   it('marks Home as the tab in view, and Memories as somewhere to go', async () => {

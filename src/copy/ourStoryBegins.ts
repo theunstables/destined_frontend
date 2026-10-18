@@ -5,8 +5,9 @@
  * used to carry is gone with it.
  */
 export const OUR_STORY_BEGINS_COPY = {
+  eyebrow: 'Our Story Begins',
   heading: "Now, let's begin your story. ❤️",
-  lede: 'Add the moments that matter and watch your timeline fill up.',
+  lede: 'Optional and editable anytime.',
   begin: "Let's Begin",
   skip: 'Skip for now',
 } as const

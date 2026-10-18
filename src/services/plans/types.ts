@@ -9,10 +9,9 @@
  * lifetime promise. Seven sibling services would have spent most of their code
  * importing each other.
  *
- * Everything here is FRONT-END ONLY. `mock.ts` is the single source of data and
- * there is no network call anywhere in this folder — the shapes below are what
- * a real API would have to return, written down now so the screens are built
- * against a contract rather than against a fixture.
+ * These shapes are shared by the in-memory mock and the API-backed Plans
+ * document. In API mode the couple-scoped backend is authoritative; the mock
+ * remains available only when no API URL is configured.
  */
 
 /** Who authored or owns a thing. The app has exactly two people in it. */
@@ -277,6 +276,8 @@ export type Whisper = {
 }
 
 export type WatchRoom = {
+  /** Rights-cleared HTTPS source selected for this room. */
+  streamUri: string
   /** Tonight's pick, shown before a session starts. */
   tonight: WatchTitle
   /** Why it was picked — "Sarah's pick", and the match score. */
@@ -293,6 +294,8 @@ export type WatchRoom = {
   whispers: Whisper[]
   queue: WatchTitle[]
   history: WatchHistoryEntry[]
+  /** Created Memory ID; persisted to make keepsake creation idempotent across remounts. */
+  keepsakeMemoryId?: string | null
 }
 
 /* ------------------------------------------------------------------ *
@@ -360,4 +363,26 @@ export type PlansOverview = {
   /** "12 waiting for us" */
   waitingCount: number
   cards: HubCard[]
+}
+
+export type PlansSnapshot = {
+  trip: Trip
+  yearBoard: YearBoard
+  promises: SharedPromise[]
+  lifetimeTarget: number
+  capsules: Capsule[]
+  letters: Letter[]
+  watchRoom: WatchRoom | null
+  sharingWindow: ShareWindow | null
+  minutesRemaining: number
+}
+
+export type PlansErrorCode = 'NO_COUPLE' | 'FORBIDDEN' | 'NETWORK' | 'UNKNOWN'
+export type PlansResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: { code: PlansErrorCode } }
+
+export type PlansService = {
+  get: () => Promise<PlansResult<PlansSnapshot | null>>
+  replace: (state: PlansSnapshot) => Promise<PlansResult<PlansSnapshot>>
 }

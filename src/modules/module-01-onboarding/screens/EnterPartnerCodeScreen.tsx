@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
@@ -8,7 +8,9 @@ import { ENTER_CODE_COPY as COPY } from '@/copy/enterPartnerCode'
 import { Button } from '@/design-system/primitives/Button'
 import { CodeInput } from '@/design-system/primitives/CodeInput'
 import { Text } from '@/design-system/primitives/Text'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
+import { FloatingInfoCard } from '@/modules/module-00-auth/components/FloatingInfoCard'
 import { pairingService } from '@/services/pairing'
 import { useRelationshipStore } from '@/state/relationshipStore'
 
@@ -22,9 +24,10 @@ const CODE_LENGTH = 6
  */
 export function EnterPartnerCodeScreen() {
   const router = useRouter()
+  const { code: linkedCode } = useLocalSearchParams<{ code?: string }>()
   const back = useBackTo('/(onboarding)/setup')
   const setPartner = useRelationshipStore((state) => state.setPartner)
-  const [code, setCode] = useState('')
+  const [code, setCode] = useState((linkedCode ?? '').replace(/[^a-zA-Z0-9]/g, '').slice(0, CODE_LENGTH))
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -57,6 +60,7 @@ export function EnterPartnerCodeScreen() {
   return (
     <AuthScreenLayout onBack={back} centred>
       <View style={styles.copy}>
+        <AuthEyebrow align="center">{COPY.eyebrow}</AuthEyebrow>
         <Text variant="h1" tone="heading" align="center">
           {COPY.heading}
         </Text>
@@ -72,6 +76,14 @@ export function EnterPartnerCodeScreen() {
           onChangeText={onChangeText}
           error={error ?? undefined}
         />
+        {error ? (
+          <FloatingInfoCard
+            icon="alert-circle"
+            title={COPY.invalidTitle}
+            body={COPY.invalidBody}
+            tone="error"
+          />
+        ) : null}
       </View>
 
       <View style={styles.actions}>
@@ -93,6 +105,7 @@ const styles = StyleSheet.create((theme) => ({
     paddingBottom: theme.spacing.xxxl,
   },
   field: {
+    gap: theme.spacing.lg,
     paddingBottom: theme.spacing.huge,
   },
   actions: {

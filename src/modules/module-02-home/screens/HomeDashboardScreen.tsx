@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   type LayoutChangeEvent,
   type NativeScrollEvent,
@@ -13,6 +13,8 @@ import {
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { HOME_DASHBOARD_COPY as COPY } from '@/copy/homeDashboard'
+import { TIMELINE_COPY } from '@/copy/timeline'
+import { isMockMode } from '@/config/env'
 import { AppScreenLayout } from '@/design-system/patterns/AppScreenLayout'
 import { CountUp } from '@/design-system/primitives/CountUp'
 import { EventRow } from '@/design-system/patterns/EventRow'
@@ -23,17 +25,24 @@ import { Card } from '@/design-system/primitives/Card'
 import { Text } from '@/design-system/primitives/Text'
 import { buildComingUp, dateInDays } from '@/modules/module-02-home/comingUp'
 import { CompatibilityCard } from '@/modules/module-02-home/components/CompatibilityCard'
+import { DailyQuestionCard } from '@/modules/module-02-home/components/DailyQuestionCard'
 import { FlashCard } from '@/modules/module-02-home/components/FlashCard'
 import { MiniCalendar } from '@/modules/module-02-home/components/MiniCalendar'
+import { RepairSignalCard } from '@/modules/module-02-home/components/RepairSignalCard'
 import { NextAdventureCard } from '@/modules/module-06-plans/components/NextAdventureCard'
 import { PhotoMemoryCard } from '@/modules/module-03-memories/components/PhotoMemoryCard'
 import { USE_SAMPLE_CONTENT } from '@/sample'
 import { SAMPLE_HOME } from '@/sample/home'
 import { SAMPLE_MEMORIES } from '@/sample/memories'
 import { memoriesService } from '@/services/memories'
+import { adaptiveContentService, type AdaptiveSuggestion } from '@/services/adaptiveContent'
+import { useCalendarStore } from '@/state/calendarStore'
+import { useHomeStore } from '@/state/homeStore'
+import { useMemoriesStore } from '@/state/memoriesStore'
 import { useRelationshipStore } from '@/state/relationshipStore'
 import { useSpaceStore } from '@/state/spaceStore'
 import { useStoryStore } from '@/state/storyStore'
+import { useTimelineStore } from '@/state/timelineStore'
 import { daysSince } from '@/utils/daysUntil'
 
 type DateKey = keyof typeof COPY.dates
@@ -87,15 +96,40 @@ export function HomeDashboardScreen() {
   const story = useStoryStore()
   const spaceName = useSpaceStore((state) => state.name)
   const relationshipStatus = useRelationshipStore((state) => state.status)
+  const dashboard = useHomeStore((state) => state.dashboard)
+  const storedMemories = useMemoriesStore((state) => state.memories)
+  const memoriesHydrated = useMemoriesStore((state) => state.hydrated)
+  const [suggestions, setSuggestions] = useState<AdaptiveSuggestion[]>([])
+
+  useEffect(() => {
+    void adaptiveContentService.suggestions().then(setSuggestions).catch(() => setSuggestions([]))
+  }, [])
+  const timelineItems = useTimelineStore((state) => state.items)
+  const allowSampleFallback = USE_SAMPLE_CONTENT
+    && isMockMode
+    && !dashboard
+    && !memoriesHydrated
 
   const computedTogether = daysSince(story.met?.value)
-  const together = computedTogether ?? (USE_SAMPLE_CONTENT ? SAMPLE_HOME.daysTogether : null)
+  const together = computedTogether
+    ?? dashboard?.daysTogether
+    ?? (allowSampleFallback ? SAMPLE_HOME.daysTogether : null)
 
-  // Shared with the occasion screen, which resolves the same row from a route
-  // key — see `module-02-home/comingUp.ts`.
-  const upcoming = buildComingUp(story.keyDates)
+  const calendarComingUp = useCalendarStore((state) => state.comingUp)
+  const calendarHydrated = useCalendarStore((state) => state.hydrated)
+  // The backend projection is authoritative when it has rows because it can
+  // merge saved calendar events with story dates. Mock/sample fallback remains
+  // available before a couple has persisted its first shared date.
+  const storyUpcoming = buildComingUp(story.keyDates)
+  const upcoming = calendarHydrated && calendarComingUp.length > 0
+    ? calendarComingUp
+    : dashboard?.comingUp.length
+      ? dashboard.comingUp
+      : storyUpcoming
 
-  const name = spaceName ?? (USE_SAMPLE_CONTENT ? SAMPLE_HOME.greetingName : null)
+  const name = dashboard?.greetingName
+    || spaceName
+    || (allowSampleFallback ? SAMPLE_HOME.greetingName : null)
 
   /*
    * "Lovely Couple" reads as the app not noticing when there is no partner
@@ -114,34 +148,51 @@ export function HomeDashboardScreen() {
   // "A memory worth keeping" is a pager, not a single card: swiping it moves to
   // the next memory. The frame draws one card, but it clips the next album card
   // too — the same gesture reading applies.
-  const featuredSet = USE_SAMPLE_CONTENT
-    ? SAMPLE_MEMORIES.filter((m) => m.photoUri).slice(0, 4)
-    : []
+  const aggregateMemories = (dashboard?.recentMemories ?? []).map((memory) => ({
+    ...memory,
+    tags: [],
+    favorite: false,
+  }))
+  const realFeatured = storedMemories.length > 0 ? storedMemories : aggregateMemories
+  const featuredSet = realFeatured.filter((memory) => memory.photoUri).slice(0, 4)
+  if (featuredSet.length === 0 && allowSampleFallback) {
+    featuredSet.push(...SAMPLE_MEMORIES.filter((memory) => memory.photoUri).slice(0, 4))
+  }
   const featured = featuredSet[0]
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({})
 
   // Tiles the app can genuinely count, added because the frame clips a 140pt
   // tile 74pt past the edge — a scroller holding more than three.
-  const statTiles = USE_SAMPLE_CONTENT
-    ? [
-        ...SAMPLE_HOME.stats,
-        {
-          key: 'memories',
-          icon: 'book-open',
-          value: String(SAMPLE_MEMORIES.length),
-          label: 'Memories',
-          unit: '',
-        },
-        {
-          key: 'photos',
-          icon: 'image',
-          value: String(SAMPLE_MEMORIES.filter((m) => m.photoUri).length),
-          label: 'Photos',
-          unit: '',
-        },
-      ]
+  const baseStats = dashboard?.stats ?? (allowSampleFallback ? SAMPLE_HOME.stats : [])
+  const supplementalStats = [
+    {
+      key: 'memories',
+      icon: 'book-open',
+      value: String(
+        storedMemories.length
+          || dashboard?.recentMemories.length
+          || (allowSampleFallback ? SAMPLE_MEMORIES.length : 0),
+      ),
+      label: 'Memories',
+      unit: '',
+    },
+    {
+      key: 'photos',
+      icon: 'image',
+      value: String(
+        realFeatured.filter((memory) => memory.photoUri).length
+          || (allowSampleFallback
+            ? SAMPLE_MEMORIES.filter((memory) => memory.photoUri).length
+            : 0),
+      ),
+      label: 'Photos',
+      unit: '',
+    },
+  ].filter((stat) => !baseStats.some((existing) => existing.key === stat.key))
+  const statTiles = baseStats.length > 0
+    ? [...baseStats, ...supplementalStats]
     : []
-  const spotlight = USE_SAMPLE_CONTENT ? SAMPLE_HOME.spotlight : undefined
+  const spotlight = allowSampleFallback ? SAMPLE_HOME.spotlight : undefined
 
   const addMemory = useCallback(() => router.push('/(app)/memories/new'), [router])
   const openMemory = useCallback((id: string) => router.push(`/(app)/memories/${id}`), [router])
@@ -171,6 +222,8 @@ export function HomeDashboardScreen() {
     [router],
   )
   const openCalendar = useCallback(() => router.push('/(app)/calendar'), [router])
+  const addCalendarEvent = useCallback(() => router.push('/(app)/calendar-events/new'), [router])
+  const openTimeline = useCallback(() => router.push('/(app)/timeline'), [router])
 
   // The pager's current page, wherever it landed — Favourite and Backstory
   // both act on whatever the couple is actually looking at, not always the
@@ -229,6 +282,8 @@ export function HomeDashboardScreen() {
           </Text>
         )}
       </View>
+
+      <DailyQuestionCard />
 
       {featured ? (
         <View style={styles.section}>
@@ -301,7 +356,7 @@ export function HomeDashboardScreen() {
        */}
       <NextAdventureCard />
 
-      {USE_SAMPLE_CONTENT ? (
+      {statTiles.length > 0 ? (
         <View style={styles.section}>
           <Text variant="h3" tone="heading">
             {COPY.littleWorldLabel}
@@ -330,13 +385,30 @@ export function HomeDashboardScreen() {
         </View>
       ) : null}
 
-      {USE_SAMPLE_CONTENT ? (
+      {allowSampleFallback ? (
         <CompatibilityCard
           you={SAMPLE_HOME.compatibility.you}
           partner={SAMPLE_HOME.compatibility.partner}
           onPress={() => router.push('/(app)/compatibility')}
         />
       ) : null}
+
+      <RepairSignalCard />
+
+      <Card>
+        <Text variant="caption" tone="brand">
+          {TIMELINE_COPY.eyebrow}
+        </Text>
+        <Text variant="h3" tone="heading">
+          {TIMELINE_COPY.homeHeading}
+        </Text>
+        <Text variant="footnote" tone="body">
+          {timelineItems.length > 0
+            ? TIMELINE_COPY.homeLede(timelineItems.length)
+            : TIMELINE_COPY.homeEmpty}
+        </Text>
+        <Button label={TIMELINE_COPY.open} onPress={openTimeline} variant="soft" />
+      </Card>
 
       {spotlight ? (
         <Card>
@@ -370,21 +442,21 @@ export function HomeDashboardScreen() {
         </Card>
       ) : null}
 
-      {USE_SAMPLE_CONTENT ? (
+      {dashboard?.pulse || allowSampleFallback ? (
         <Card>
           <Text variant="caption" tone="muted">
-            {SAMPLE_HOME.pulse.label.toUpperCase()}
+            {(dashboard?.pulse ?? SAMPLE_HOME.pulse).label.toUpperCase()}
           </Text>
 
           <View style={styles.pulseRow}>
-            <CountUp value={Number(SAMPLE_HOME.pulse.value.replace(/,/g, ''))} />
+            <CountUp value={Number((dashboard?.pulse ?? SAMPLE_HOME.pulse).value.replace(/,/g, ''))} />
             <Text variant="footnote" tone="body">
-              {SAMPLE_HOME.pulse.unit}
+              {(dashboard?.pulse ?? SAMPLE_HOME.pulse).unit}
             </Text>
           </View>
 
           <Text variant="footnote" tone="body">
-            {SAMPLE_HOME.pulse.caption}
+            {(dashboard?.pulse ?? SAMPLE_HOME.pulse).caption}
           </Text>
         </Card>
       ) : null}
@@ -398,7 +470,7 @@ export function HomeDashboardScreen() {
             <Text variant="footnote" tone="body">
               {COPY.emptyCalendar.lede}
             </Text>
-            <Button label={COPY.emptyCalendar.action} onPress={openCalendar} variant="soft" />
+            <Button label={COPY.emptyCalendar.action} onPress={addCalendarEvent} variant="soft" />
           </Card>
         ) : (
           upcoming.map((row, i) => (
@@ -415,7 +487,7 @@ export function HomeDashboardScreen() {
         )}
       </SectionPanel>
 
-      {USE_SAMPLE_CONTENT ? (
+      {allowSampleFallback ? (
         <SectionPanel title={COPY.upcomingLabel}>
           {SAMPLE_HOME.upcomingEvents.map((event, i) => (
             <OccasionCard
@@ -439,11 +511,15 @@ export function HomeDashboardScreen() {
       />
 
       <SectionPanel title={COPY.littleThingsLabel}>
-        {USE_SAMPLE_CONTENT && SAMPLE_HOME.littleThings.length > 0 ? (
-          SAMPLE_HOME.littleThings.map((thing) => (
+        {suggestions.length > 0 ? (
+          suggestions.map((thing) => (
             <Pressable
               key={thing.key}
-              onPress={openCalendar}
+              onPress={() => {
+                if (thing.action === 'chat') router.push('/(app)/chat/conversation')
+                else if (thing.action === 'memory') addMemory()
+                else openCalendar()
+              }}
               style={styles.note}
               accessibilityRole="button"
               accessibilityLabel={thing.text}

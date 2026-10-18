@@ -1,3 +1,5 @@
+import { isMockMode } from '@/config/env'
+
 /**
  * SAMPLE CONTENT — the UI's stand-in until a backend exists.
  *
@@ -12,10 +14,8 @@ export { SAMPLE_HOME } from '@/sample/home'
 /**
  * THE SWITCH.
  *
- * `true` while the UI is being built ahead of the backend: screens whose real
- * source is empty fall back to sample content so the designed layout is what
- * you see. Flip to `false` and every screen returns to its genuine empty state
- * — which is why those empty states are still built and still tested rather
- * than deleted in favour of the sample.
+ * Sample records are a mock-mode preview only. API-backed builds must show the
+ * genuine empty or not-found state; substituting an invented record after a
+ * server miss would misrepresent the couple's private data.
  */
-export const USE_SAMPLE_CONTENT = true
+export const USE_SAMPLE_CONTENT = isMockMode

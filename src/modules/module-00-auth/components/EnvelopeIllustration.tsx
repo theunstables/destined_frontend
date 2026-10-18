@@ -46,6 +46,11 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border.hairline,
+    borderRadius: theme.radii.medallion,
+    backgroundColor: theme.colors.surface.soft,
+    boxShadow: theme.elevation.medallion,
   },
   card: {
     width: 128,

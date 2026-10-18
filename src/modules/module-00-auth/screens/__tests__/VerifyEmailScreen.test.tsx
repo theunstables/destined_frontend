@@ -2,6 +2,8 @@ import { act, screen, userEvent } from '@testing-library/react-native'
 
 import { VERIFY_EMAIL_COPY as COPY } from '@/copy/verifyEmail'
 import { VerifyEmailScreen } from '@/modules/module-00-auth/screens/VerifyEmailScreen'
+import { authService } from '@/services/auth'
+import { useSessionStore } from '@/state/sessionStore'
 import { renderScreen } from '@/test/renderScreen'
 
 const mockBack = jest.fn()
@@ -16,15 +18,22 @@ describe('VerifyEmailScreen', () => {
     jest.useFakeTimers()
     mockBack.mockClear()
     mockReplace.mockClear()
+    useSessionStore.getState().signedIn({
+      userId: 'user-1',
+      email: 'olivia@example.com',
+      emailVerified: false,
+    })
   })
 
   afterEach(() => {
     jest.useRealTimers()
+    jest.restoreAllMocks()
   })
 
   it('renders its blocks from copy', async () => {
     await renderScreen(<VerifyEmailScreen />)
 
+    expect(screen.getByText(COPY.eyebrow)).toBeTruthy()
     expect(screen.getByText(COPY.heading)).toBeTruthy()
     expect(screen.getByText(COPY.lede)).toBeTruthy()
     expect(screen.getByRole('button', { name: COPY.resend })).toBeTruthy()
@@ -109,5 +118,60 @@ describe('VerifyEmailScreen', () => {
     expect(
       screen.getByRole('button', { name: COPY.resend }).props.accessibilityState,
     ).toMatchObject({ disabled: true })
+  })
+
+  it('resends verification to the signed-in address instead of a blank value', async () => {
+    const resend = jest.spyOn(authService, 'resendVerification')
+    useSessionStore.getState().signedIn({
+      userId: 'user-1',
+      email: 'olivia@example.com',
+      emailVerified: false,
+    })
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
+    await renderScreen(<VerifyEmailScreen />)
+
+    await act(async () => {
+      jest.advanceTimersByTime(60_000)
+    })
+    await user.press(screen.getByRole('button', { name: COPY.resend }))
+
+    expect(resend).toHaveBeenCalledWith({ email: 'olivia@example.com' })
+  })
+
+  it('never calls resend with an empty placeholder when the session is missing', async () => {
+    const resend = jest.spyOn(authService, 'resendVerification')
+    useSessionStore.getState().reset()
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
+    await renderScreen(<VerifyEmailScreen />)
+
+    await act(async () => {
+      jest.advanceTimersByTime(60_000)
+    })
+    await user.press(screen.getByRole('button', { name: COPY.resend }))
+
+    expect(resend).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent(COPY.missingSession)
+  })
+
+  it('continues when resend reports that the account is already verified', async () => {
+    jest.spyOn(authService, 'resendVerification').mockResolvedValueOnce({
+      ok: false,
+      error: { code: 'EMAIL_ALREADY_VERIFIED' },
+    })
+    useSessionStore.getState().signedIn({
+      userId: 'user-1',
+      email: 'olivia@example.com',
+      emailVerified: false,
+    })
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
+    await renderScreen(<VerifyEmailScreen />)
+
+    await act(async () => {
+      jest.advanceTimersByTime(60_000)
+    })
+    await user.press(screen.getByRole('button', { name: COPY.resend }))
+
+    expect(useSessionStore.getState().session?.emailVerified).toBe(true)
+    expect(mockReplace).toHaveBeenCalledWith('/(onboarding)/setup')
   })
 })

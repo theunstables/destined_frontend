@@ -1,12 +1,15 @@
+import { Feather } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator } from 'react-native'
-import { useUnistyles } from 'react-native-unistyles'
+import { ActivityIndicator, View } from 'react-native'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { CONNECTING_COPY as COPY } from '@/copy/connecting'
 import { StatusScreen } from '@/design-system/patterns/StatusScreen'
 import { Button } from '@/design-system/primitives/Button'
+import { AuthEyebrow } from '@/modules/module-00-auth/components/AuthEyebrow'
 import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreenLayout'
+import { FloatingInfoCard } from '@/modules/module-00-auth/components/FloatingInfoCard'
 import { pairingService } from '@/services/pairing'
 import { useRelationshipStore } from '@/state/relationshipStore'
 
@@ -70,16 +73,63 @@ export function ConnectingScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const returnToCode = useCallback(
+    () => router.replace('/(onboarding)/enter-code'),
+    [router],
+  )
+
   return (
     <AuthScreenLayout centred>
+      <View style={styles.eyebrow}>
+        <AuthEyebrow align="center">
+          {error ? COPY.errorEyebrow : COPY.eyebrow}
+        </AuthEyebrow>
+      </View>
       <StatusScreen
         illustration={
-          error ? null : <ActivityIndicator size="large" color={theme.colors.brand.primary} />
+          error ? (
+            <View style={styles.errorMedallion}>
+              <Feather name="rotate-cw" size={40} color={theme.colors.feedback.error} />
+            </View>
+          ) : (
+            <ActivityIndicator size="large" color={theme.colors.brand.primary} />
+          )
         }
-        heading={error ?? COPY.heading}
-        lede={error ? undefined : COPY.lede}
-        actions={error ? <Button label={COPY.retry} onPress={attempt} /> : undefined}
+        heading={error ? COPY.errorHeading : COPY.heading}
+        lede={error ? COPY.errorLede : COPY.lede}
+        actions={
+          error ? (
+            <>
+              <FloatingInfoCard
+                icon="alert-circle"
+                title={COPY.errorHeading}
+                body={error}
+                tone="error"
+              />
+              <Button label={COPY.retry} onPress={attempt} />
+              <Button label={COPY.returnToCode} onPress={returnToCode} variant="outline" />
+            </>
+          ) : undefined
+        }
+        announce={Boolean(error)}
       />
     </AuthScreenLayout>
   )
 }
+
+const styles = StyleSheet.create((theme) => ({
+  eyebrow: {
+    paddingBottom: theme.spacing.lg,
+  },
+  errorMedallion: {
+    width: 96,
+    height: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.feedback.error,
+    borderRadius: theme.radii.medallion,
+    backgroundColor: theme.colors.surface.soft,
+    boxShadow: theme.elevation.medallion,
+  },
+}))

@@ -10,6 +10,7 @@ import { SAMPLE_ALBUMS } from '@/sample/albums'
 import { SAMPLE_MEMORIES } from '@/sample/memories'
 import { memoriesService } from '@/services/memories'
 import type { Memory } from '@/services/memories/types'
+import { useMemoriesStore } from '@/state/memoriesStore'
 import { useRelationshipStore } from '@/state/relationshipStore'
 import { renderScreen } from '@/test/renderScreen'
 
@@ -27,8 +28,12 @@ jest.mock('@/services/memories', () => ({
     list: jest.fn(),
     get: jest.fn(),
     create: jest.fn(),
+    updatePrivateNote: jest.fn(),
+    withdrawPrivateNote: jest.fn(),
     toggleFavorite: jest.fn(),
     search: jest.fn(),
+    listAlbums: jest.fn(),
+    addToAlbum: jest.fn(),
   },
 }))
 
@@ -75,17 +80,28 @@ beforeEach(() => {
   // ordinary answer: there is a stack behind this screen.
   mockCanGoBack.mockReturnValue(true)
   mockId = 'memory-1'
+  useMemoriesStore.getState().reset()
   useRelationshipStore.getState().reset()
 
   // Defaults a test can override: an empty library and a memory nobody has.
   service.list.mockResolvedValue({ ok: true, value: [] })
   service.get.mockResolvedValue({ ok: false, error: { code: 'NOT_FOUND' } })
   service.search.mockResolvedValue({ ok: true, value: [] })
+  service.listAlbums.mockResolvedValue({ ok: true, value: [] })
+  service.addToAlbum.mockResolvedValue({ ok: true, value: undefined })
   service.create.mockImplementation(async (input) => ({
     ok: true,
     value: { ...input, id: 'memory-9', favorite: false },
   }))
   service.toggleFavorite.mockResolvedValue({ ok: true, value: { ...ROME, favorite: true } })
+  service.updatePrivateNote.mockImplementation(async ({ note }) => ({
+    ok: true,
+    value: { ...ROME, myPrivateNote: note, reciprocalNotesRevealed: false },
+  }))
+  service.withdrawPrivateNote.mockResolvedValue({
+    ok: true,
+    value: { ...ROME, myPrivateNote: undefined, reciprocalNotesRevealed: false },
+  })
 })
 
 describe('M03-S01 Memories Home', () => {
@@ -326,6 +342,90 @@ describe('M03-S02 Memory Detail', () => {
 
     // No optimistic lie: the control still says what is true on the server.
     expect(await screen.findByRole('button', { name: COPY.detail.favorite })).toBeTruthy()
+  })
+
+  it('adds the memory to an authoritative album', async () => {
+    const album = { id: 'album-1', key: 'trips', label: 'Trips', count: 4 }
+    service.get.mockResolvedValue({ ok: true, value: ROME })
+    service.listAlbums.mockResolvedValue({ ok: true, value: [album] })
+    const user = userEvent.setup()
+    await renderScreen(<MemoryDetailScreen />)
+
+    await user.press(await screen.findByRole('button', { name: ALBUMS_COPY.picker.heading }))
+    await user.press(await screen.findByRole('button', { name: album.label }))
+
+    expect(service.addToAlbum).toHaveBeenCalledWith({
+      albumId: album.id,
+      memoryId: ROME.id,
+    })
+    expect(await screen.findByText(ALBUMS_COPY.picker.success(album.label))).toBeTruthy()
+  })
+
+  it('keeps a private note sealed while waiting for the partner', async () => {
+    service.get.mockResolvedValue({ ok: true, value: ROME })
+    const user = userEvent.setup()
+    await renderScreen(<MemoryDetailScreen />)
+
+    await user.type(
+      await screen.findByLabelText(COPY.detail.privateNotes.inputLabel),
+      'I knew this trip would change us.',
+    )
+    await user.press(screen.getByRole('button', { name: COPY.detail.privateNotes.save }))
+
+    expect(service.updatePrivateNote).toHaveBeenCalledWith({
+      id: ROME.id,
+      note: 'I knew this trip would change us.',
+    })
+    expect(await screen.findByText(COPY.detail.privateNotes.waitingTitle)).toBeTruthy()
+    expect(screen.queryByText(COPY.detail.privateNotes.partnerNote)).toBeNull()
+  })
+
+  it('reveals both private notes only when the provider marks them reciprocal', async () => {
+    service.get.mockResolvedValue({
+      ok: true,
+      value: {
+        ...ROME,
+        myPrivateNote: 'I felt at home.',
+        partnerPrivateNote: 'I wanted that day to last.',
+        reciprocalNotesRevealed: true,
+      },
+    })
+
+    await renderScreen(<MemoryDetailScreen />)
+
+    expect(await screen.findByText(COPY.detail.privateNotes.revealedTitle)).toBeTruthy()
+    expect(screen.getByText('I felt at home.')).toBeTruthy()
+    expect(screen.getByText('I wanted that day to last.')).toBeTruthy()
+  })
+
+  it('confirms before withdrawing a revealed pair of notes', async () => {
+    const revealed = {
+      ...ROME,
+      myPrivateNote: 'I felt at home.',
+      partnerPrivateNote: 'I wanted that day to last.',
+      reciprocalNotesRevealed: true,
+    }
+    service.get.mockResolvedValue({ ok: true, value: revealed })
+    service.withdrawPrivateNote.mockResolvedValue({
+      ok: true,
+      value: { ...ROME, myPrivateNote: undefined, reciprocalNotesRevealed: false },
+    })
+    const user = userEvent.setup()
+    await renderScreen(<MemoryDetailScreen />)
+
+    await user.press(
+      await screen.findByRole('button', { name: COPY.detail.privateNotes.withdraw }),
+    )
+
+    expect(screen.getByText(COPY.detail.privateNotes.withdrawConfirm.title)).toBeTruthy()
+    expect(service.withdrawPrivateNote).not.toHaveBeenCalled()
+
+    await user.press(
+      screen.getByRole('button', { name: COPY.detail.privateNotes.withdrawConfirm.confirm }),
+    )
+
+    expect(service.withdrawPrivateNote).toHaveBeenCalledWith({ id: ROME.id })
+    expect(await screen.findByRole('button', { name: COPY.detail.privateNotes.save })).toBeTruthy()
   })
 })
 
