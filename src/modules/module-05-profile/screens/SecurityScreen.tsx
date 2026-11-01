@@ -10,6 +10,8 @@ import { SettingsScreenLayout } from '@/design-system/patterns/SettingsScreenLay
 import { SettingsToggleRow } from '@/design-system/patterns/SettingsToggleRow'
 import { Text } from '@/design-system/primitives/Text'
 import { MOCK_SESSIONS } from '@/modules/module-05-profile/data/mock'
+import { GoogleSignInButton } from '@/modules/module-00-auth/components/GoogleSignInButton'
+import { AppleSignInButton } from '@/modules/module-00-auth/components/AppleSignInButton'
 
 /**
  * M05-S08 — Settings → Security & Sessions.
@@ -41,6 +43,8 @@ export function SecurityScreen() {
   return (
     <SettingsScreenLayout title={COPY.title} lede={COPY.lede} onBack={goBack}>
       <SectionPanel title={COPY.credentialsGroup}>
+        <GoogleSignInButton link />
+        <AppleSignInButton link />
         <SettingsRow
           icon="key"
           label={COPY.changePassword}

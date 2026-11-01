@@ -65,9 +65,13 @@ export function CapsuleCreateScreen() {
   const { theme } = useUnistyles()
 
   const sealCapsule = usePlansStore((state) => state.sealCapsule)
+  const saveError = usePlansStore((state) => state.error)
 
   const [step, setStep] = useState(1)
-  const [kinds, setKinds] = useState<CapsuleItemKind[]>(['photos', 'letter', 'prediction'])
+  const [kinds, setKinds] = useState<CapsuleItemKind[]>(['letter'])
+  const [title, setTitle] = useState('')
+  const [payload, setPayload] = useState<Partial<Record<CapsuleItemKind, string>>>({})
+  const [saving, setSaving] = useState(false)
   const [when, setWhen] = useState<WhenKey>('fiveYears')
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | undefined>()
@@ -92,9 +96,23 @@ export function CapsuleCreateScreen() {
     setStep((s) => Math.min(STEPS, s + 1))
   }, [kinds.length, step])
 
-  const onSeal = useCallback(() => {
-    setSealed(sealCapsule({ kinds, opensAt, sealNote: note }))
-  }, [kinds, note, opensAt, sealCapsule])
+  const onSeal = useCallback(async () => {
+    if (!title.trim() || title.trim().length > 140 || kinds.some((kind) => !payload[kind]?.trim() || payload[kind]!.length > 5000)) {
+      setError('Add a title (up to 140 characters) and content for each item (up to 5,000 characters).')
+      return
+    }
+    setSaving(true)
+    setError(undefined)
+    const capsule = sealCapsule({ title, kinds, opensAt, sealNote: note, payload: Object.fromEntries(kinds.map((kind) => [kind, payload[kind]!.trim()])) })
+    const saved = await usePlansStore.getState().waitForSave()
+    setSaving(false)
+    const persisted = saved?.capsules.find((item) => item.id === capsule.id)
+    if (persisted) setSealed(persisted)
+    else {
+      usePlansStore.setState((state) => ({ capsules: state.capsules.filter((item) => item.id !== capsule.id) }))
+      setError('The capsule was not saved. Your content is still here; reload saved plans before retrying.')
+    }
+  }, [title, kinds, note, opensAt, payload, sealCapsule])
 
   /* ---------------- the confirmation ---------------- */
 
@@ -146,7 +164,7 @@ export function CapsuleCreateScreen() {
             />
             <Receipt
               label={CAPSULE_CREATE_COPY.done.sealedBy}
-              value={CAPSULE_CREATE_COPY.done.both}
+              value="You"
             />
           </View>
 
@@ -194,7 +212,7 @@ export function CapsuleCreateScreen() {
 
       {step === 1 ? (
         <View style={styles.grid}>
-          {SAMPLE_CAPSULE_KINDS.map((option) => {
+          {SAMPLE_CAPSULE_KINDS.filter((option) => ['letter', 'prediction', 'promise', 'question'].includes(option.kind)).map((option) => {
             const selected = kinds.includes(option.kind)
 
             return (
@@ -232,9 +250,13 @@ export function CapsuleCreateScreen() {
       ) : null}
 
       {error ? (
-        <Text variant="footnote" tone="error">
+        <Text variant="footnote" tone="error" accessibilityRole="alert">
           {error}
         </Text>
+      ) : null}
+      {saveError ? (
+        <Button label="Reload saved plans" variant="outline" disabled={saving}
+          onPress={() => { void usePlansStore.getState().hydrate().then(() => setError(usePlansStore.getState().error ?? undefined)) }} />
       ) : null}
 
       {step === 2 ? (
@@ -275,6 +297,11 @@ export function CapsuleCreateScreen() {
 
       {step === 3 ? (
         <>
+          <Input label="Capsule title" value={title} onChangeText={setTitle} maxLength={140} />
+          {kinds.map((kind) => (
+            <Input key={kind} label={SAMPLE_CAPSULE_KINDS.find((option) => option.kind === kind)?.label ?? kind}
+              value={payload[kind] ?? ''} onChangeText={(text) => setPayload((current) => ({ ...current, [kind]: text }))} maxLength={5000} multiline />
+          ))}
           <View style={styles.summary}>
             <Text variant="caption" tone="placeholder">
               {CAPSULE_CREATE_COPY.unsealsOn}
@@ -283,6 +310,7 @@ export function CapsuleCreateScreen() {
             <Text variant="h3" tone="brand">
               {longDate(opensAt)}
             </Text>
+            <Text variant="footnote" tone="placeholder">00:00 UTC</Text>
 
             <View style={styles.summaryChips}>
               {kinds.map((kind) => (
@@ -306,14 +334,14 @@ export function CapsuleCreateScreen() {
 
       {step === STEPS ? (
         <>
-          <Button label={CAPSULE_CREATE_COPY.seal} onPress={onSeal} />
+          <Button label={CAPSULE_CREATE_COPY.seal} onPress={() => { void onSeal() }} loading={saving} />
 
           <Text variant="footnote" tone="placeholder" align="center">
             {CAPSULE_CREATE_COPY.sealWarning}
           </Text>
         </>
       ) : (
-        <Button label={CAPSULE_CREATE_COPY.next} onPress={onNext} />
+        <Button key={step} label={CAPSULE_CREATE_COPY.next} onPress={onNext} />
       )}
     </AppScreenLayout>
   )

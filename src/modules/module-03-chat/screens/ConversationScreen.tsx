@@ -28,6 +28,10 @@ import { groupPositions } from '@/modules/module-03-chat/grouping'
 import { useChatStore } from '@/modules/module-03-chat/state/chatStore'
 import { useRelationshipStore } from '@/state/relationshipStore'
 import { callSignalingService } from '@/services/calls'
+import { currentLocation, locationMapUrl } from '@/services/sharedPlaces/location'
+import { Input } from '@/design-system/primitives/Input'
+import { Button } from '@/design-system/primitives/Button'
+import { Text } from '@/design-system/primitives/Text'
 
 /** Chat — Conversation. Figma `Ziyu` 3390:665 / 3390:521 / 3390:585. */
 export function ConversationScreen() {
@@ -40,6 +44,15 @@ export function ConversationScreen() {
   const onBack = useBackTo('/(app)/chat')
   const scroll = useRef<ScrollView>(null)
   const loaded = useRef(false)
+  const [loadError, setLoadError] = useState(false)
+  const locationRequest = useRef(0)
+  const [noteOpen, setNoteOpen] = useState(false)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [locationBusy, setLocationBusy] = useState(false)
+  const [locationDraft, setLocationDraft] = useState<{ uri: string; label: string } | null>(null)
+  const [attachmentSending, setAttachmentSending] = useState(false)
+
+  useEffect(() => () => { locationRequest.current += 1 }, [])
   const partnerName = useRelationshipStore((state) => state.partner?.name)
     ?? CHAT_COPY.home.defaultPartnerName
   const startCall = (mode: 'voice' | 'video') => {
@@ -61,7 +74,7 @@ export function ConversationScreen() {
   useEffect(() => {
     if (loaded.current) return
     loaded.current = true
-    void s.load()
+    void s.load().catch(() => setLoadError(true))
   }, [s])
 
   /**
@@ -76,6 +89,44 @@ export function ConversationScreen() {
    * result being silently absorbed by a component that already fired both.
    */
   const [feedback, setFeedback] = useState<{ key: number; tone: FeedbackTone; message: string } | null>(null)
+
+  const cancelLocation = () => {
+    locationRequest.current += 1
+    setLocationBusy(false)
+    setLocationDraft(null)
+  }
+
+  const stageLocation = async () => {
+    s.closeAttachments()
+    const request = ++locationRequest.current
+    setLocationBusy(true)
+    try {
+      const fix = await currentLocation()
+      if (request !== locationRequest.current) return
+      setLocationDraft({ uri: locationMapUrl(fix), label: `${fix.latitude.toFixed(5)}, ${fix.longitude.toFixed(5)}` })
+    } catch (error) {
+      if (request === locationRequest.current) setFeedback({ key: Date.now(), tone: 'error', message: error instanceof Error ? error.message : 'Location could not be obtained.' })
+    } finally {
+      if (request === locationRequest.current) setLocationBusy(false)
+    }
+  }
+
+  const sendNote = async () => {
+    if (!noteDraft.trim() || noteDraft.length > 4000 || attachmentSending) return
+    setAttachmentSending(true)
+    await s.sendNote(noteDraft)
+    setAttachmentSending(false)
+    setNoteDraft('')
+    setNoteOpen(false)
+  }
+
+  const sendLocation = async () => {
+    if (!locationDraft || attachmentSending) return
+    setAttachmentSending(true)
+    await s.sendLocation(locationDraft.uri, locationDraft.label)
+    setAttachmentSending(false)
+    setLocationDraft(null)
+  }
 
   const handleSaveMemory = () => {
     const id = s.selectedMessageId
@@ -200,6 +251,11 @@ export function ConversationScreen() {
             onDismiss={() => setFeedback(null)}
           />
         )}
+
+        {loadError ? <View style={{ padding: theme.spacing.md }}>
+          <Text variant="footnote" tone="error" accessibilityRole="alert">Messages could not be loaded.</Text>
+          <Button label="Reload messages" variant="outline" onPress={() => { void s.load().then(() => setLoadError(false)).catch(() => setLoadError(true)) }} />
+        </View> : null}
 
         <View style={styles.threadLayer}>
           {/* The same flat-fill-plus-glow the form screens use (see
@@ -333,10 +389,34 @@ export function ConversationScreen() {
             // is the honest middle ground: it goes somewhere real instead
             // of just closing the sheet.
             onMemory={() => { s.closeAttachments(); router.push('/(app)/memories') }}
+            onLocation={() => { void stageLocation() }}
+            onNote={() => { s.closeAttachments(); setNoteOpen(true) }}
             onClose={s.closeAttachments}
           />
         </Overlay>
       )}
+
+      {noteOpen ? (
+        <Overlay onDismiss={() => { if (!attachmentSending) setNoteOpen(false) }} dismissLabel="Close note">
+          <View style={styles.attachmentEditor}>
+            <Text variant="h3" tone="heading">Add note</Text>
+            <Input label="Note" value={noteDraft} onChangeText={setNoteDraft} maxLength={4000} multiline />
+            <Text variant="footnote" tone={noteDraft.length > 4000 ? 'error' : 'placeholder'}>{`${noteDraft.length} / 4000`}</Text>
+            <Button label="Send note" onPress={() => { void sendNote() }} loading={attachmentSending} disabled={!noteDraft.trim() || noteDraft.length > 4000} />
+            <Button label="Cancel" variant="outline" onPress={() => setNoteOpen(false)} disabled={attachmentSending} />
+          </View>
+        </Overlay>
+      ) : null}
+      {locationBusy || locationDraft ? (
+        <Overlay onDismiss={() => { if (!attachmentSending) cancelLocation() }} dismissLabel="Cancel location sharing">
+          <View style={styles.attachmentEditor}>
+            <Text variant="h3" tone="heading">One-time location</Text>
+            <Text variant="body" tone="body">{locationBusy ? 'Getting your location...' : locationDraft?.label}</Text>
+            <Button label="Send location" onPress={() => { void sendLocation() }} loading={attachmentSending} disabled={!locationDraft || locationBusy} />
+            <Button label="Cancel" variant="outline" onPress={cancelLocation} disabled={attachmentSending} />
+          </View>
+        </Overlay>
+      ) : null}
 
       {/* Full-screen in its own right (`PhotoSharePreview` covers the screen
           itself), so it renders as a plain sibling rather than inside a
@@ -353,6 +433,7 @@ export function ConversationScreen() {
 }
 
 const styles = StyleSheet.create((theme) => ({
+  attachmentEditor: { width: '100%', maxWidth: theme.layout.column, padding: theme.spacing.lg, gap: theme.spacing.md, backgroundColor: theme.colors.surface.page, borderRadius: theme.radii.panel },
   page: { flex: 1, backgroundColor: theme.colors.surface.page },
   flex: { flex: 1 },
   threadLayer: { flex: 1 },

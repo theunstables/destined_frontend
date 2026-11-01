@@ -1,4 +1,4 @@
-import { Image } from 'expo-image'
+import { Image } from '@/design-system/primitives/PrivateImage'
 import { useCallback, useState } from 'react'
 import {
   type LayoutChangeEvent,

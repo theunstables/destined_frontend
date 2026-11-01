@@ -260,7 +260,7 @@ describe('M06-S01 Our Plans — the hub', () => {
   })
 
   it.each([
-    ['year', PLANS_COPY.cards.year.title, YEAR_STATUS, '/(app)/plans/year'],
+    ['year', PLANS_COPY.cards.year.title, YEAR_STATUS, '/(app)/bingo'],
     ['lifetime', PLANS_COPY.cards.lifetime.title, LIFETIME_STATUS, '/(app)/plans/lifetime'],
     [
       'capsules',

@@ -48,6 +48,17 @@ describe('Button', () => {
     expect(button.props.accessibilityState).toMatchObject({ disabled: true })
   })
 
+  it('unlocks immediately when the button changes to a different action', async () => {
+    const send = jest.fn()
+    const resend = jest.fn()
+    const { rerender } = await render(<Button label="Send" onPress={send} />)
+    await userEvent.press(screen.getByRole('button', { name: 'Send' }))
+    await rerender(<Button label="Resend" onPress={resend} />)
+    await userEvent.press(screen.getByRole('button', { name: 'Resend' }))
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(resend).toHaveBeenCalledTimes(1)
+  })
+
   it('renders the trailing slot', async () => {
     await render(
       <Button

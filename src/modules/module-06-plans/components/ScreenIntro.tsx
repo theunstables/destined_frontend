@@ -3,6 +3,7 @@ import { View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Text } from '@/design-system/primitives/Text'
+import { ScrollReveal } from '@/design-system/patterns/ScrollReveal'
 
 type ScreenIntroProps = {
   /** The little pill above the headline — "A Lifetime of Two", "Sealed Vault". */
@@ -30,7 +31,7 @@ export function ScreenIntro({ chip, chipIcon, title, lede, aside }: ScreenIntroP
   const { theme } = useUnistyles()
 
   return (
-    <View style={styles.wrap}>
+    <ScrollReveal effect="fade" style={styles.wrap}>
       <View style={styles.chip}>
         {chipIcon ? (
           <Feather name={chipIcon} size={12} color={theme.colors.brand.primary} />
@@ -60,7 +61,7 @@ export function ScreenIntro({ chip, chipIcon, title, lede, aside }: ScreenIntroP
           {lede}
         </Text>
       ) : null}
-    </View>
+    </ScrollReveal>
   )
 }
 

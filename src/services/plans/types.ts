@@ -189,6 +189,7 @@ export type Capsule = {
   /** "TOT-2027-CS" — printed on the sealed confirmation. */
   vaultCode: string
   opened: boolean
+  payload?: Partial<Record<CapsuleItemKind, string>>
 }
 
 /** What the 3-step creation flow collects. */
@@ -196,6 +197,8 @@ export type CapsuleDraft = {
   kinds: CapsuleItemKind[]
   opensAt: string
   sealNote: string
+  title?: string
+  payload?: Partial<Record<CapsuleItemKind, string>>
 }
 
 /* ------------------------------------------------------------------ *
@@ -366,6 +369,7 @@ export type PlansOverview = {
 }
 
 export type PlansSnapshot = {
+  revision?: number
   trip: Trip
   yearBoard: YearBoard
   promises: SharedPromise[]

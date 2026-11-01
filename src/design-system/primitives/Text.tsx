@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Text as RNText, type TextProps as RNTextProps } from 'react-native'
+import { Platform, Text as RNText, type TextProps as RNTextProps } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 export type TextVariant =
@@ -71,10 +71,21 @@ export function Text({
   children,
   ...rest
 }: TextProps) {
-  styles.useVariants({ variant, tone, align, strike })
+  const link = rest.accessibilityRole === 'link'
+  styles.useVariants({ variant, tone, align, strike, link })
+  const keyboard = Platform.OS === 'web' && link && rest.onPress ? {
+    tabIndex: 0,
+    onKeyDown: (event: { key: string; preventDefault: () => void }) => {
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        rest.onPress?.(event as unknown as Parameters<NonNullable<RNTextProps['onPress']>>[0])
+      }
+    },
+  } : {}
 
   return (
-    <RNText style={styles.text} {...rest}>
+    <RNText style={styles.text} {...rest} {...keyboard}
+      accessibilityRole={rest.accessibilityRole ?? (['display', 'h1', 'h2', 'h3'].includes(variant) ? 'header' : undefined)}>
       {children}
     </RNText>
   )
@@ -118,6 +129,10 @@ const styles = StyleSheet.create((theme) => ({
       strike: {
         true: { textDecorationLine: 'line-through' },
         false: { textDecorationLine: 'none' },
+      },
+      link: {
+        true: { textDecorationLine: 'underline' },
+        false: {},
       },
     },
   },

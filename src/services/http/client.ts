@@ -55,6 +55,7 @@ const DEFAULT_TIMEOUT_MS = 15_000
 export type QueryValue = string | number | boolean | undefined | null
 
 export type RequestOptions = {
+  responseType?: 'json' | 'blob'
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   /** Serialised as JSON. Use `form` for multipart. */
   body?: unknown
@@ -240,7 +241,7 @@ async function send(
   const onAbort = () => controller.abort()
   options.signal?.addEventListener('abort', onAbort)
 
-  const headers: Record<string, string> = { accept: 'application/json' }
+  const headers: Record<string, string> = { accept: options.responseType === 'blob' ? '*/*' : 'application/json' }
 
   /**
    * `Content-Type` is set for JSON only. For `FormData` the runtime must add it
@@ -262,6 +263,7 @@ async function send(
       headers,
       body: options.form ?? (options.body === undefined ? undefined : JSON.stringify(options.body)),
       signal: controller.signal,
+      cache: options.responseType === 'blob' ? 'no-store' : undefined,
       // Lets the browser target carry the refresh cookie; ignored by RN.
       credentials: 'include',
     })
@@ -309,6 +311,10 @@ export async function request<T>(
   }
 
   const requestId = response.headers.get('x-request-id') ?? undefined
+
+  if (response.ok && options.responseType === 'blob') {
+    return { data: await response.blob() as T, meta: {}, requestId }
+  }
 
   // 204 has no body, and `response.json()` on an empty body throws.
   if (response.status === 204) {

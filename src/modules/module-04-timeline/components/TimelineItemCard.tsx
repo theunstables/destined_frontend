@@ -1,10 +1,11 @@
 import { Feather } from '@expo/vector-icons'
-import { Image } from 'expo-image'
+import { Image } from '@/design-system/primitives/PrivateImage'
 import { Pressable, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { TIMELINE_COPY as COPY } from '@/copy/timeline'
 import { Text } from '@/design-system/primitives/Text'
+import { ScrollReveal } from '@/design-system/patterns/ScrollReveal'
 import type { TimelineItem } from '@/services/timeline'
 import { formatDate } from '@/utils/formatStoryDate'
 
@@ -78,9 +79,10 @@ export function TimelineItemCard({ item, onPress }: Props) {
     </View>
   )
 
-  if (!onPress) return content
+  if (!onPress) return <ScrollReveal effect="rise">{content}</ScrollReveal>
 
   return (
+    <ScrollReveal effect="rise">
     <Pressable
       onPress={() => onPress(item)}
       accessibilityRole="button"
@@ -88,6 +90,7 @@ export function TimelineItemCard({ item, onPress }: Props) {
     >
       {content}
     </Pressable>
+    </ScrollReveal>
   )
 }
 

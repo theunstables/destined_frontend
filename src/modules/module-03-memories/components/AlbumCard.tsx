@@ -1,9 +1,10 @@
-import { Image } from 'expo-image'
+import { Image } from '@/design-system/primitives/PrivateImage'
 import { Pressable, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { ALBUMS_COPY as COPY } from '@/copy/albums'
 import { Text } from '@/design-system/primitives/Text'
+import { ScrollReveal } from '@/design-system/patterns/ScrollReveal'
 import type { Album } from '@/sample/albums'
 import type { MemoryAlbum } from '@/services/memories/types'
 
@@ -29,11 +30,12 @@ export function AlbumCard({ album, onPress, layout = 'grid' }: AlbumCardProps) {
   styles.useVariants({ layout })
 
   return (
+    <ScrollReveal effect="zoom" disabled={layout === 'rail'} style={styles.cell}>
     <Pressable
       onPress={() => onPress(routeKey)}
       accessibilityRole="button"
       accessibilityLabel={`${album.label}, ${COPY.list.count(count)}`}
-      style={styles.cell}
+      style={styles.pressable}
     >
       <Image
         source={album.coverUri ? { uri: album.coverUri } : undefined}
@@ -58,10 +60,12 @@ export function AlbumCard({ album, onPress, layout = 'grid' }: AlbumCardProps) {
         </Text>
       </View>
     </Pressable>
+    </ScrollReveal>
   )
 }
 
 const styles = StyleSheet.create((theme) => ({
+  pressable: { gap: theme.spacing.sm },
   cell: {
     gap: theme.spacing.sm,
     variants: {

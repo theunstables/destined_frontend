@@ -12,7 +12,6 @@ import { FormField } from '@/components/forms/FormField'
 import { authErrorMessage } from '@/copy/errors'
 import { SIGN_IN_COPY as COPY } from '@/copy/signIn'
 import { FooterPrompt } from '@/design-system/patterns/FooterPrompt'
-import { SocialButton } from '@/design-system/patterns/SocialButton'
 import { Button } from '@/design-system/primitives/Button'
 import { Divider } from '@/design-system/primitives/Divider'
 import { Text } from '@/design-system/primitives/Text'
@@ -23,6 +22,8 @@ import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreen
 import { FloatingInfoCard } from '@/modules/module-00-auth/components/FloatingInfoCard'
 import { signInSchema, type SignInValues } from '@/modules/module-00-auth/state/authSchemas'
 import { authService } from '@/services/auth'
+import { GoogleSignInButton } from '@/modules/module-00-auth/components/GoogleSignInButton'
+import { AppleSignInButton } from '@/modules/module-00-auth/components/AppleSignInButton'
 
 /**
  * M00-S02 — Sign In. Figma 522:53.
@@ -118,6 +119,8 @@ export function SignInScreen() {
           placeholder={COPY.passwordPlaceholder}
           secure
           autoComplete="current-password"
+          onSubmitEditing={() => { if (!formState.isSubmitting) void submit() }}
+          returnKeyType="go"
         />
 
         <View style={styles.forgot}>
@@ -156,20 +159,9 @@ export function SignInScreen() {
         <Divider label={COPY.dividerLabel} />
       </View>
 
-      {/* OAuth is out of scope (spec §17) — real Google/Apple sign-in needs
-          `expo-auth-session` plus provider credentials, neither of which
-          exist here. These used to render pressable with an `onPress={() =>
-          {}}` no-op, which looked live and did nothing; `disabled` is what
-          `SocialButton` already exposes for exactly this (it flags
-          `accessibilityState.disabled` and blocks the press), so the layout
-          stays real while honestly reading as not-yet-available instead of
-          silently dead. The wrapping `View`'s opacity is the visual half —
-          `SocialButton` itself does not dim on `disabled` (design-system is
-          out of scope for this task), so it happens here instead, same 0.6
-          `BottomNav` reaches for on its own unbuilt tab. */}
-      <View style={[styles.social, styles.socialDisabled]}>
-        <SocialButton provider="google" onPress={() => {}} disabled />
-        <SocialButton provider="apple" onPress={() => {}} disabled />
+      <View style={styles.social}>
+        <GoogleSignInButton />
+        <AppleSignInButton />
       </View>
 
       <FooterPrompt
@@ -200,10 +192,7 @@ const styles = StyleSheet.create((theme) => ({
     paddingVertical: theme.spacing.lg,
   },
   social: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: theme.spacing.md,
-  },
-  socialDisabled: {
-    opacity: 0.6,
   },
 }))

@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons'
-import { Image } from 'expo-image'
+import { Image } from '@/design-system/primitives/PrivateImage'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { View } from 'react-native'
@@ -211,7 +211,7 @@ export function PlansHubScreen() {
           lede={PLANS_COPY.cards.year.lede(year)}
           status={PLANS_COPY.cards.year.status(stamped, tileTotal)}
           statusDetail={inProgress ? `${inProgress} in progress` : null}
-          onPress={() => router.push('/(app)/plans/year')}
+          onPress={() => router.push('/(app)/bingo')}
         />
 
         <PlanCard

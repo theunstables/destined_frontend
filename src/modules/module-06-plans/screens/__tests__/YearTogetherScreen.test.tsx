@@ -314,7 +314,8 @@ describe('M06-S04 Our Year Together — the frame around the board', () => {
     expect(screen.getByText(YEAR_COPY.eyebrow)).toBeTruthy()
     expect(screen.getByText(String(SAMPLE_YEAR_BOARD.year))).toBeTruthy()
     expect(screen.getByText(`“${SAMPLE_YEAR_BOARD.encouragement}”`)).toBeTruthy()
-    expect(screen.getByText(String(SAMPLE_YEAR_BOARD.daysRemaining))).toBeTruthy()
+    const daysLeft = Math.max(0, Math.ceil((Date.UTC(SAMPLE_YEAR_BOARD.year + 1, 0, 1) - Date.now()) / 86_400_000))
+    expect(screen.getByText(String(daysLeft))).toBeTruthy()
   })
 
   it('marks Plans as the tab in view', async () => {

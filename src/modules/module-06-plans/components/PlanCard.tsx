@@ -3,6 +3,7 @@ import { View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { PressableScale } from '@/design-system/patterns/PressableScale'
+import { ScrollReveal } from '@/design-system/patterns/ScrollReveal'
 import { Text } from '@/design-system/primitives/Text'
 
 type PlanCardProps = {
@@ -43,7 +44,7 @@ export function PlanCard({
   const pair = theme.colors.accents[accent]
 
   return (
-    <View style={styles.cell}>
+    <ScrollReveal effect="rise" delay={accent * 40} style={styles.cell}>
       <PressableScale onPress={onPress} accessibilityLabel={`${title}. ${status}`}>
         <View style={styles.card}>
           <View style={styles.top}>
@@ -79,7 +80,7 @@ export function PlanCard({
           </View>
         </View>
       </PressableScale>
-    </View>
+    </ScrollReveal>
   )
 }
 

@@ -8,7 +8,7 @@
 export const YEAR_COPY = {
   eyebrow: 'Annual Couple Board',
   headerTitle: 'Shared Keepsakes',
-  title: 'Our Year Together',
+  title: 'Bingo Cards Planner',
   lede: '12 months. A hundred little possibilities. Pick moments to share, discover, or simply look forward to.',
 
   progress: (done: number, total: number) => `${done} / ${total}`,
@@ -21,7 +21,7 @@ export const YEAR_COPY = {
     completed: 'Completed',
     inProgress: 'In Progress',
   },
-  addTile: 'Add tile',
+  addTile: 'Add card',
 
   /**
    * The state a tap moves a tile INTO, announced to screen readers.

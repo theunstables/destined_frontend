@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons'
-import { Image } from 'expo-image'
+import { Image } from '@/design-system/primitives/PrivateImage'
+import { usePrivateMediaUri } from '@/hooks/usePrivateMediaUri'
 import { useRouter } from 'expo-router'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { useEffect, useRef, useState } from 'react'
@@ -145,7 +146,8 @@ function WatchRoomScreen({ room }: { room: WatchRoom }) {
   const [connected, setConnected] = useState(isMockMode && room.connected)
   const applyingRemotePlayback = useRef(false)
 
-  const player = useVideoPlayer(room.streamUri, (instance) => {
+  const privateStream = usePrivateMediaUri(room.streamUri)
+  const player = useVideoPlayer(privateStream ?? null, (instance) => {
     // Not auto-played: the screen has a "Start watching now" button, and a video
     // that begins on its own would talk over whatever the user was listening to.
     instance.loop = false

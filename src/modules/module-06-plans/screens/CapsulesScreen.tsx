@@ -5,6 +5,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { CAPSULES_COPY } from '@/copy/capsules'
 import { AppScreenLayout } from '@/design-system/patterns/AppScreenLayout'
+import { ScrollReveal } from '@/design-system/patterns/ScrollReveal'
 import { PressableScale } from '@/design-system/patterns/PressableScale'
 import { Button } from '@/design-system/primitives/Button'
 import { Text } from '@/design-system/primitives/Text'
@@ -69,7 +70,7 @@ export function CapsulesScreen() {
       />
 
       {featured ? (
-        <View style={styles.featured}>
+        <ScrollReveal effect="zoom" style={styles.featured}>
           <View style={styles.featuredTop}>
             <Chip label={CAPSULES_COPY.featured.label} icon="lock" tone="brand" />
 
@@ -123,7 +124,7 @@ export function CapsulesScreen() {
               )}
             </View>
           </View>
-        </View>
+        </ScrollReveal>
       ) : (
         <View style={styles.empty}>
           <Feather name="inbox" size={20} color={theme.colors.brand.primary} />
@@ -153,8 +154,10 @@ export function CapsulesScreen() {
         </Text>
       </View>
 
-      {capsules.map((capsule) => (
-        <CapsuleRow key={capsule.id} capsule={capsule} />
+      {capsules.map((capsule, index) => (
+        <ScrollReveal key={capsule.id} effect="flip" delay={(index % 3) * 40}>
+          <CapsuleRow capsule={capsule} />
+        </ScrollReveal>
       ))}
     </AppScreenLayout>
   )

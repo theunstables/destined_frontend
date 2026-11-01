@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { TextInput, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
@@ -62,10 +62,14 @@ function split(value: string): { mm: string; dd: string; yyyy: string } {
  */
 export function DateField({ label, value, onChangeText, error }: DateFieldProps) {
   const [parts, setParts] = useState(() => split(value))
+  const lastEmittedValue = useRef(value)
 
   // Keeps the segments honest if the form resets the value from outside.
   useEffect(() => {
-    if (value === '') setParts({ mm: '', dd: '', yyyy: '' })
+    if (value !== lastEmittedValue.current) {
+      setParts(split(value))
+      lastEmittedValue.current = value
+    }
   }, [value])
 
   const update = useCallback(
@@ -77,7 +81,9 @@ export function DateField({ label, value, onChangeText, error }: DateFieldProps)
 
       const complete = next.mm.length === 2 && next.dd.length === 2 && next.yyyy.length === 4
 
-      onChangeText(complete ? `${next.yyyy}-${next.mm}-${next.dd}` : '')
+      const nextValue = complete ? `${next.yyyy}-${next.mm}-${next.dd}` : ''
+      lastEmittedValue.current = nextValue
+      onChangeText(nextValue)
     },
     [parts, onChangeText],
   )

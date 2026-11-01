@@ -6,6 +6,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { PhotoCarousel } from '@/design-system/patterns/PhotoCarousel'
 import { PhotoLightbox } from '@/design-system/patterns/PhotoLightbox'
 import { PressableScale } from '@/design-system/patterns/PressableScale'
+import { ScrollReveal } from '@/design-system/patterns/ScrollReveal'
 import { Text } from '@/design-system/primitives/Text'
 import { photosOf } from '@/modules/module-03-memories/photos'
 import type { Memory } from '@/services/memories/types'
@@ -61,7 +62,7 @@ export function PhotoMemoryCard({
   )
 
   return (
-    <View style={styles.frame}>
+    <ScrollReveal effect="zoom" disabled={size === 'hero'} style={styles.frame}>
       {photos.length > 0 ? (
         <View style={styles.photoWrap}>
           <PhotoCarousel
@@ -118,7 +119,7 @@ export function PhotoMemoryCard({
         onClose={() => setOpenAt(null)}
         caption={memory.title}
       />
-    </View>
+    </ScrollReveal>
   )
 }
 

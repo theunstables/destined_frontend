@@ -4,6 +4,7 @@ import { StyleSheet } from 'react-native-unistyles'
 
 import { IconButton } from '@/design-system/patterns/IconButton'
 import { Text } from '@/design-system/primitives/Text'
+import { usePrivateMediaUri } from '@/hooks/usePrivateMediaUri'
 
 type Props = {
   uri: string
@@ -24,7 +25,8 @@ function clock(ms: number): string {
  * has the dependency, so play/pause and the elapsed time are both real.
  */
 export function MemoryVoicePlayer({ uri, fallbackDurationMs = 0 }: Props) {
-  const player = useAudioPlayer(uri)
+  const resolved = usePrivateMediaUri(uri)
+  const player = useAudioPlayer(resolved ?? null)
   const status = useAudioPlayerStatus(player)
 
   const durationMs = status.duration ? status.duration * 1000 : fallbackDurationMs

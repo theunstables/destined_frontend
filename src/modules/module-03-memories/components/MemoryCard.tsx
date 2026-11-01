@@ -3,6 +3,7 @@ import { View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { PressableScale } from '@/design-system/patterns/PressableScale'
+import { ScrollReveal } from '@/design-system/patterns/ScrollReveal'
 import { Card } from '@/design-system/primitives/Card'
 import { Text } from '@/design-system/primitives/Text'
 import type { Memory } from '@/services/memories/types'
@@ -25,6 +26,7 @@ export function MemoryCard({ memory, onPress }: MemoryCardProps) {
   const { theme } = useUnistyles()
 
   return (
+    <ScrollReveal effect="rise">
     <PressableScale onPress={() => onPress(memory.id)} accessibilityLabel={memory.title}>
       <Card>
         <View style={styles.head}>
@@ -51,6 +53,7 @@ export function MemoryCard({ memory, onPress }: MemoryCardProps) {
         ) : null}
       </Card>
     </PressableScale>
+    </ScrollReveal>
   )
 }
 

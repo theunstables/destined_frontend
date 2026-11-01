@@ -22,6 +22,16 @@ const noop = () => {}
  * `fireEvent`.
  */
 describe('AttachmentSheet', () => {
+  it('opens the note and location actions when supplied', async () => {
+    const onNote = jest.fn()
+    const onLocation = jest.fn()
+    await renderScreen(<AttachmentSheet onCamera={noop} onPickPhoto={noop} onVoiceNote={noop} onMemory={noop} onClose={noop} onNote={onNote} onLocation={onLocation} />)
+    await fireEvent.press(screen.getByLabelText('Add note'))
+    await fireEvent.press(screen.getByLabelText('Share current location'))
+    expect(onNote).toHaveBeenCalledTimes(1)
+    expect(onLocation).toHaveBeenCalledTimes(1)
+  })
+
   it('offers the four sources the frame draws', async () => {
     const { getByText } = await renderScreen(
       <AttachmentSheet

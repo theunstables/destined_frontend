@@ -197,6 +197,7 @@ describe('chat store', () => {
       kind: 'photo',
       mediaUri: 'file://a.jpg',
       body: 'us',
+      clientId: expect.any(String),
     })
     const sent = useChatStore.getState().messages.at(-1)
     expect(sent).toMatchObject({ kind: 'photo', mediaUri: 'file://a.jpg', body: 'us' })
@@ -213,6 +214,7 @@ describe('chat store', () => {
       kind: 'photo',
       mediaUri: 'file://a.jpg',
       body: undefined,
+      clientId: expect.any(String),
     })
   })
 
@@ -226,6 +228,26 @@ describe('chat store', () => {
 
     act(() => { useChatStore.getState().selectMessage('m2') })
     expect(useChatStore.getState().attachmentSheetOpen).toBe(false)
+  })
+
+  it('keeps a failed note and retries with the same idempotency key', async () => {
+    service.sendMessage.mockRejectedValueOnce(new Error('offline'))
+    await act(async () => { await useChatStore.getState().sendNote('Remember the tickets') })
+    const failed = useChatStore.getState().messages.at(-1)!
+    expect(failed).toMatchObject({ kind: 'note', body: 'Remember the tickets', status: 'failed' })
+    const clientId = service.sendMessage.mock.calls[0][0].clientId
+    service.sendMessage.mockResolvedValueOnce({ ...message('saved-note', 'me', failed.body!), kind: 'note' })
+    await act(async () => { await useChatStore.getState().retry(failed.id) })
+    expect(service.sendMessage.mock.calls[1][0].clientId).toBe(clientId)
+    expect(useChatStore.getState().messages).toHaveLength(1)
+  })
+
+  it('sends a location as a location message rather than a photo', async () => {
+    const uri = 'https://www.openstreetmap.org/?mlat=17&mlon=78'
+    service.sendMessage.mockResolvedValue({ ...message('saved-location', 'me', '17, 78'), kind: 'location', mediaUri: uri })
+    await act(async () => { await useChatStore.getState().sendLocation(uri, '17, 78') })
+    expect(service.sendMessage).toHaveBeenCalledWith(expect.objectContaining({ kind: 'location', mediaUri: uri, clientId: expect.any(String) }))
+    expect(useChatStore.getState().messages.at(-1)?.kind).toBe('location')
   })
 
   // The brief's `load()` calls `chatService.subscribe` unconditionally. Task

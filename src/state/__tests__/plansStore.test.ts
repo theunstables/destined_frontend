@@ -59,6 +59,22 @@ describe('plansStore', () => {
   })
 
   describe('cycleTile', () => {
+    it('adds, edits, and removes custom Bingo cards through the save path', async () => {
+      usePlansStore.setState({ yearBoard: { ...SAMPLE_YEAR_BOARD, tiles: [] } })
+      expect(await usePlansStore.getState().saveTile({ title: 'Cook together', note: 'Saturday' })).toBe(true)
+      const card = usePlansStore.getState().yearBoard.tiles[0]
+      expect(card).toMatchObject({ title: 'Cook together', note: 'Saturday', state: 'todo' })
+      expect(await usePlansStore.getState().saveTile({ id: card.id, title: 'Bake together', note: '' })).toBe(true)
+      expect(usePlansStore.getState().yearBoard.tiles[0].title).toBe('Bake together')
+      usePlansStore.getState().removeTile(card.id)
+      await usePlansStore.getState().waitForSave()
+      expect(usePlansStore.getState().yearBoard.tiles).toEqual([])
+    })
+
+    it('rejects empty custom Bingo cards', async () => {
+      expect(await usePlansStore.getState().saveTile({ title: ' ', note: '' })).toBe(false)
+    })
+
     it('walks todo to in progress to done and back, because the board draws three states', () => {
       const { cycleTile } = usePlansStore.getState()
       const stateOf = () =>
@@ -127,7 +143,7 @@ describe('plansStore', () => {
 
       expect(capsule.opensAt).toBe('2030-05-01')
       expect(capsule.createdAt).toBe(TODAY)
-      expect(capsule.sealedBy).toBe('both')
+      expect(capsule.sealedBy).toBe('me')
       expect(capsule.opened).toBe(false)
       // The year on the code is the year it OPENS, not the year it was written
       // — that is the figure the couple will be searching the vault for in 2030.

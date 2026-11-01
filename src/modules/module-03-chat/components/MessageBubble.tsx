@@ -1,4 +1,5 @@
-import { Pressable, View } from 'react-native'
+import { useState } from 'react'
+import { Linking, Pressable, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { Text } from '@/design-system/primitives/Text'
@@ -63,6 +64,7 @@ export function MessageBubble({
   quotedBody,
   group = ALONE,
 }: Props) {
+  const [mapError, setMapError] = useState(false)
   const mine = message.authorId === 'me'
   const time = clockTime(message.sentAt)
 
@@ -89,7 +91,8 @@ export function MessageBubble({
   // A grouped bubble folds its time in too. Its footer is not drawn, so
   // without this a screen-reader user would lose what a sighted one keeps:
   // where each message sits in a rapid exchange.
-  const kindLabel = message.kind === 'photo' ? 'Photo' : message.kind === 'voice' ? 'Voice' : 'Message'
+  const kindLabel = message.kind === 'photo' ? 'Photo' : message.kind === 'voice' ? 'Voice'
+    : message.kind === 'note' ? 'Note' : message.kind === 'location' ? 'Location' : 'Message'
   const bubbleLabel = !message.body
     ? `${kindLabel} message, sent at ${time}`
     : showsFooter
@@ -123,7 +126,21 @@ export function MessageBubble({
             wrapping `View` carries the gap between image and caption:
             `Text` has no `style` prop by design, so that layout can't live
             on the `Text` itself. */}
-        {message.kind === 'photo' && message.mediaUri ? (
+        {message.kind === 'location' && message.mediaUri?.startsWith('https://www.openstreetmap.org/?mlat=') ? (
+          <View style={styles.media}>
+            <Text variant="caption" tone="onChat">One-time location</Text>
+            <Text variant="label" tone="onChat">{message.body}</Text>
+            <Pressable accessibilityRole="link" accessibilityLabel="Open shared location in maps" onPress={() => { setMapError(false); void Linking.openURL(message.mediaUri!).catch(() => setMapError(true)) }}>
+              <Text variant="label" tone="onChat">Open map</Text>
+            </Pressable>
+            {mapError ? <Text variant="footnote" tone="onChat" accessibilityRole="alert">The map could not be opened.</Text> : null}
+          </View>
+        ) : message.kind === 'note' ? (
+          <View style={styles.media}>
+            <Text variant="caption" tone="onChat">Note</Text>
+            <Text variant="label" tone="onChat">{message.body}</Text>
+          </View>
+        ) : message.kind === 'photo' && message.mediaUri ? (
           <View style={styles.media}>
             <PhotoMessage uri={message.mediaUri} time={time} />
             {message.body ? <Text variant="label" tone="onChat">{message.body}</Text> : null}

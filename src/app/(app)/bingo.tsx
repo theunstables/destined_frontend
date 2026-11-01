@@ -1,0 +1,1 @@
+export { YearTogetherScreen as default } from '@/modules/module-06-plans/screens/YearTogetherScreen'

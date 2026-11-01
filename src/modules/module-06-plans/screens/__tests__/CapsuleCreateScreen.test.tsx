@@ -1,4 +1,4 @@
-import { act, screen, userEvent } from '@testing-library/react-native'
+import { screen, userEvent } from '@testing-library/react-native'
 
 import { CAPSULE_CREATE_COPY } from '@/copy/capsules'
 import { CapsuleCreateScreen } from '@/modules/module-06-plans/screens/CapsuleCreateScreen'
@@ -22,8 +22,7 @@ jest.mock('expo-router', () => ({
 
 const STEPS = 3
 
-/** The three kinds the wizard arrives with already chosen. */
-const DEFAULT_KINDS: CapsuleItemKind[] = ['photos', 'letter', 'prediction']
+const DEFAULT_KINDS: CapsuleItemKind[] = ['letter']
 
 /**
  * A kind tile's accessible name — label and hint, as the screen composes it.
@@ -49,9 +48,9 @@ const STUB_SEALED: Capsule = {
   title: 'A capsule for us',
   createdAt: '2026-09-21',
   opensAt: '2026-09-30',
-  sealedBy: 'both',
+  sealedBy: 'me',
   sealNote: null,
-  contents: { photos: 1 },
+  contents: { letter: 1 },
   vaultCode: 'TOT-4242-ZZ',
   opened: false,
 }
@@ -65,12 +64,13 @@ const STUB_SEALED: Capsule = {
  * one back, in the same `beforeEach` that resets the data.
  */
 const realSealCapsule = usePlansStore.getState().sealCapsule
+const realWaitForSave = usePlansStore.getState().waitForSave
 
 beforeEach(() => {
   mockPush.mockClear()
   mockBack.mockClear()
   mockReplace.mockClear()
-  usePlansStore.setState({ sealCapsule: realSealCapsule })
+  usePlansStore.setState({ sealCapsule: realSealCapsule, waitForSave: realWaitForSave })
   usePlansStore.getState().reset()
 })
 
@@ -78,34 +78,21 @@ afterEach(() => {
   jest.restoreAllMocks()
 })
 
-/**
- * Presses a `Button` and then waits out its double-tap guard.
- *
- * `Button` swallows a second press within 600ms of the first — a deliberate
- * guard against a fast double tap pushing a destination twice; see its own
- * note. "Continue" on step 1 and "Continue" on step 2 are the SAME Button
- * instance (same position, same component), so the ref holding that guard
- * survives the step change: driven at test speed, the wizard silently stops
- * advancing after its first press.
- *
- * Waiting the guard out here rather than shortening it in the source keeps the
- * test honest about the component a user actually presses.
- */
 async function pressButton(
   user: ReturnType<typeof userEvent.setup>,
   name: string,
 ) {
   await user.press(screen.getByRole('button', { name }))
-
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 650))
-  })
 }
 
 /** Walks the wizard from step 1 to step 3, leaving the defaults alone. */
 async function advanceToStep(user: ReturnType<typeof userEvent.setup>, step: 2 | 3) {
   for (let i = 1; i < step; i += 1) {
     await pressButton(user, CAPSULE_CREATE_COPY.next)
+  }
+  if (step === 3) {
+    await user.type(screen.getByLabelText('Capsule title'), 'Future us')
+    await user.type(screen.getByLabelText(SAMPLE_CAPSULE_KINDS.find((option) => option.kind === 'letter')!.label), 'For our future selves.')
   }
 }
 
@@ -118,7 +105,7 @@ async function advanceToStep(user: ReturnType<typeof userEvent.setup>, step: 2 |
  * way a user can get there.
  */
 describe('M06-S07 Seal a capsule · step 1, what goes in', () => {
-  it('arrives with three kinds already chosen', async () => {
+  it('arrives with one supported content kind chosen', async () => {
     await renderScreen(<CapsuleCreateScreen />)
 
     expect(screen.getByText(CAPSULE_CREATE_COPY.step(1, STEPS))).toBeTruthy()
@@ -130,7 +117,7 @@ describe('M06-S07 Seal a capsule · step 1, what goes in', () => {
       })
     }
 
-    expect(screen.getByLabelText(kindLabel('memory')).props.accessibilityState).toMatchObject({
+    expect(screen.getByLabelText(kindLabel('promise')).props.accessibilityState).toMatchObject({
       checked: false,
     })
   })
@@ -139,15 +126,15 @@ describe('M06-S07 Seal a capsule · step 1, what goes in', () => {
     const user = userEvent.setup()
     await renderScreen(<CapsuleCreateScreen />)
 
-    await user.press(screen.getByLabelText(kindLabel('memory')))
-    expect(screen.getByLabelText(kindLabel('memory')).props.accessibilityState).toMatchObject({
+    await user.press(screen.getByLabelText(kindLabel('promise')))
+    expect(screen.getByLabelText(kindLabel('promise')).props.accessibilityState).toMatchObject({
       checked: true,
     })
 
     // The tiles are checkboxes, not radios — a second press takes it back out
     // rather than leaving it stuck on.
-    await user.press(screen.getByLabelText(kindLabel('memory')))
-    expect(screen.getByLabelText(kindLabel('memory')).props.accessibilityState).toMatchObject({
+    await user.press(screen.getByLabelText(kindLabel('promise')))
+    expect(screen.getByLabelText(kindLabel('promise')).props.accessibilityState).toMatchObject({
       checked: false,
     })
   })
@@ -254,7 +241,7 @@ describe('M06-S07 Seal a capsule · step 3, the note and the seal', () => {
     // actually being sealed.
     for (const kind of DEFAULT_KINDS) {
       const option = SAMPLE_CAPSULE_KINDS.find((o) => o.kind === kind)!
-      expect(screen.getByText(option.label)).toBeTruthy()
+      expect(screen.getAllByText(option.label).length).toBeGreaterThan(0)
     }
 
     // The note field names itself optional, because it is: the test below
@@ -293,14 +280,14 @@ describe('M06-S07 Seal a capsule · step 3, the note and the seal', () => {
 
     const capsule = usePlansStore.getState().capsules[0]
     expect(capsule.sealNote).toBe('Read this on the terrace.')
-    expect(capsule.contents).toEqual({ photos: 1, letter: 1, prediction: 1 })
+    expect(capsule.contents).toEqual({ letter: 1 })
   })
 
   it('hands the whole draft to the store, and prints the capsule it gets back', async () => {
     const user = userEvent.setup()
 
     const sealCapsule = jest.fn((_draft: CapsuleDraft): Capsule => STUB_SEALED)
-    usePlansStore.setState({ sealCapsule })
+    usePlansStore.setState({ sealCapsule, waitForSave: async () => ({ ...usePlansStore.getState(), capsules: [STUB_SEALED] }) })
 
     await renderScreen(<CapsuleCreateScreen />)
 
@@ -326,6 +313,8 @@ describe('M06-S07 Seal a capsule · step 3, the note and the seal', () => {
       kinds: DEFAULT_KINDS,
       opensAt: expect.any(String),
       sealNote: 'For the two of us.',
+      title: 'Future us',
+      payload: { letter: 'For our future selves.' },
     })
 
     // The code the STORE returned, not one the screen composed for itself.
@@ -335,6 +324,17 @@ describe('M06-S07 Seal a capsule · step 3, the note and the seal', () => {
 })
 
 describe('M06-S07 Seal a capsule · the confirmation', () => {
+  it('keeps content and shows an error when persistence fails', async () => {
+    const user = userEvent.setup()
+    usePlansStore.setState({ waitForSave: async () => null })
+    await renderScreen(<CapsuleCreateScreen />)
+    await advanceToStep(user, 3)
+    await pressButton(user, CAPSULE_CREATE_COPY.seal)
+    expect(await screen.findByText(/The capsule was not saved/)).toBeTruthy()
+    expect(screen.queryByText(CAPSULE_CREATE_COPY.done.title)).toBeNull()
+    expect(screen.getByLabelText('Capsule title').props.value).toBe('Future us')
+  })
+
   it("renders 'It's sealed' in place, without navigating anywhere", async () => {
     const user = userEvent.setup()
     await renderScreen(<CapsuleCreateScreen />)

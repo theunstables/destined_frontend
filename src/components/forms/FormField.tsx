@@ -13,6 +13,8 @@ type FormFieldProps<T extends FieldValues> = {
   labelTrailing?: ReactNode
   keyboardType?: TextInputProps['keyboardType']
   autoComplete?: TextInputProps['autoComplete']
+  onSubmitEditing?: TextInputProps['onSubmitEditing']
+  returnKeyType?: TextInputProps['returnKeyType']
 }
 
 /**
@@ -31,6 +33,8 @@ export function FormField<T extends FieldValues>({
   labelTrailing,
   keyboardType,
   autoComplete,
+  onSubmitEditing,
+  returnKeyType,
 }: FormFieldProps<T>) {
   return (
     <Controller
@@ -48,6 +52,8 @@ export function FormField<T extends FieldValues>({
           labelTrailing={labelTrailing}
           keyboardType={keyboardType}
           autoComplete={autoComplete}
+          onSubmitEditing={onSubmitEditing}
+          returnKeyType={returnKeyType}
         />
       )}
     />

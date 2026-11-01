@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useRef, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, Pressable, View, type LayoutChangeEvent } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -43,7 +43,8 @@ export function Button({
   trailing,
   accessibilityLabel,
 }: ButtonProps) {
-  const isBlocked = disabled || loading
+  const [guarded, setGuarded] = useState(false)
+  const isBlocked = disabled || loading || guarded
 
   styles.useVariants({ variant, disabled: isBlocked })
 
@@ -70,19 +71,25 @@ export function Button({
   // Navigation is not instant. Without this guard a fast double tap pushes the
   // destination twice and the user has to press back twice to escape.
   const isHandling = useRef(false)
+  const guardTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    isHandling.current = false
+    setGuarded(false)
+    return () => { if (guardTimer.current) clearTimeout(guardTimer.current) }
+  }, [label])
 
   const handlePress = useCallback(() => {
-    if (isHandling.current) return
+    if (isBlocked || isHandling.current) return
 
     isHandling.current = true
-    onPress()
-
-    // Long enough to swallow a double tap, short enough that a user returning
-    // to this screen finds the button live again.
-    setTimeout(() => {
+    setGuarded(true)
+    guardTimer.current = setTimeout(() => {
       isHandling.current = false
+      setGuarded(false)
     }, 600)
-  }, [onPress])
+    onPress()
+  }, [isBlocked, onPress])
 
   // A disabled primary loses its purple fill for a grey one, so its label has to
   // switch from white to body ink to stay legible. See spec D20.4.

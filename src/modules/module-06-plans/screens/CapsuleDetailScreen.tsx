@@ -31,6 +31,7 @@ export function CapsuleDetailScreen() {
   const capsule = usePlansStore((state) => state.capsules.find((item) => item.id === id))
   const openCapsule = usePlansStore((state) => state.openCapsule)
   const [message, setMessage] = useState<string | null>(null)
+  const [opening, setOpening] = useState(false)
 
   if (!capsule) {
     return (
@@ -42,9 +43,12 @@ export function CapsuleDetailScreen() {
   }
 
   const due = capsule.opensAt <= new Date().toISOString().slice(0, 10)
-  const open = () => {
-    const result = openCapsule(capsule.id)
-    setMessage(result === 'not-due' ? `This capsule stays sealed until ${longDate(capsule.opensAt)}.` : null)
+  const open = async () => {
+    setOpening(true)
+    const result = await openCapsule(capsule.id)
+    setOpening(false)
+    setMessage(result === 'not-due' ? `This capsule stays sealed until ${longDate(capsule.opensAt)}.`
+      : result === 'failed' ? 'The capsule could not be opened. Reload saved plans and try again.' : null)
   }
 
   return (
@@ -77,12 +81,20 @@ export function CapsuleDetailScreen() {
             <Text variant="labelStrong" tone="brand">{count}</Text>
           </View>
         ))}
+        {capsule.opened && Object.entries(capsule.payload ?? {}).map(([kind, content]) => (
+          <View key={kind} style={{ gap: theme.spacing.sm }}>
+            <Text variant="labelStrong" tone="heading">{labels[kind as CapsuleItemKind]}</Text>
+            <Text variant="body" tone="body">{content}</Text>
+          </View>
+        ))}
       </View>
 
       {!capsule.opened ? (
-        <Button label={due ? 'Open capsule' : `Opens ${longDate(capsule.opensAt)}`} onPress={open} />
+        <Button label={due ? 'Open capsule' : `Opens ${longDate(capsule.opensAt)}`} onPress={() => { void open() }} disabled={!due} loading={opening} />
       ) : null}
       {message ? <Text variant="footnote" tone="error" align="center">{message}</Text> : null}
+      {message ? <Button label="Reload saved plans" variant="outline"
+        onPress={() => { void usePlansStore.getState().hydrate().then(() => setMessage(usePlansStore.getState().error)) }} /> : null}
     </AppScreenLayout>
   )
 }

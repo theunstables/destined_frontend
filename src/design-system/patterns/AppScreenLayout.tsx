@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router'
-import { useCallback, type ReactNode } from 'react'
+import { useCallback, useRef, type ReactNode } from 'react'
 import { ScrollView, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StyleSheet } from 'react-native-unistyles'
@@ -8,6 +8,7 @@ import { APP_NAV, type AppTabKey } from '@/copy/appNav'
 import { AppHeader } from '@/design-system/patterns/AppHeader'
 import { ThemedStatusBar } from '@/design-system/patterns/ThemedStatusBar'
 import { BottomNav } from '@/design-system/patterns/BottomNav'
+import { ScrollRevealProvider, useRevealViewport } from '@/design-system/patterns/ScrollReveal'
 
 type AppScreenLayoutProps = {
   activeTab: AppTabKey
@@ -38,6 +39,8 @@ export function AppScreenLayout({
 }: AppScreenLayoutProps) {
   const insets = useSafeAreaInsets()
   const router = useRouter()
+  const scrollRef = useRef<ScrollView>(null)
+  const revealViewport = useRevealViewport(scrollRef)
 
   const onSelect = useCallback(
     (key: string) => {
@@ -66,6 +69,7 @@ export function AppScreenLayout({
 
       {scroll ? (
         <ScrollView
+          ref={scrollRef}
           style={styles.flex}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
@@ -98,8 +102,12 @@ export function AppScreenLayout({
           keyboardShouldPersistTaps="handled"
           contentInsetAdjustmentBehavior="automatic"
           overScrollMode="never"
+          onScroll={revealViewport.check}
+          onLayout={revealViewport.check}
+          onContentSizeChange={revealViewport.check}
+          scrollEventThrottle={32}
         >
-          {body}
+          <ScrollRevealProvider viewport={revealViewport}>{body}</ScrollRevealProvider>
         </ScrollView>
       ) : (
         <View style={[styles.flex, styles.content]}>{body}</View>

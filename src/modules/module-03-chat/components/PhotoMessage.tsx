@@ -1,4 +1,4 @@
-import { Image } from 'expo-image'
+import { Image } from '@/design-system/primitives/PrivateImage'
 import { Pressable, useWindowDimensions, View } from 'react-native'
 import { useUnistyles } from 'react-native-unistyles'
 import { Text } from '@/design-system/primitives/Text'

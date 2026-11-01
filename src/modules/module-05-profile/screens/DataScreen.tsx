@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router'
-import { Image } from 'expo-image'
+import { Image } from '@/design-system/primitives/PrivateImage'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { isMockMode } from '@/config/env'

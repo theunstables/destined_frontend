@@ -1,5 +1,15 @@
 import type { LocationFix } from '@/services/sharedPlaces/types'
 
+export function locationMapUrl(fix: LocationFix): string {
+  if (!Number.isFinite(fix.latitude) || !Number.isFinite(fix.longitude)
+    || Math.abs(fix.latitude) > 90 || Math.abs(fix.longitude) > 180) {
+    throw new Error('The device returned an invalid location.')
+  }
+  const latitude = fix.latitude.toFixed(5)
+  const longitude = fix.longitude.toFixed(5)
+  return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=16/${latitude}/${longitude}`
+}
+
 type BrowserGeolocation = {
   getCurrentPosition: (
     success: (position: { coords: { latitude: number; longitude: number; accuracy: number } }) => void,

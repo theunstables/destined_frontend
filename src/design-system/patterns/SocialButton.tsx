@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Text } from '@/design-system/primitives/Text'
+import { Image } from 'expo-image'
 
 export type SocialProvider = 'google' | 'apple'
 
@@ -10,6 +11,7 @@ type SocialButtonProps = {
   provider: SocialProvider
   onPress: () => void
   disabled?: boolean
+  label?: string
 }
 
 // Glyph names verified against this version's AntDesign glyph map, which offers
@@ -29,11 +31,8 @@ const PROVIDER = {
  * cards. M00-S02's label was Medium (500), a weight not registered in
  * `_layout.tsx` that would silently fall back to Regular — it is SemiBold here.
  *
- * OPEN ITEM: Google's Sign-In branding guidelines require the official
- * multi-colour mark. This monochrome glyph is a stand-in and must be replaced
- * before OAuth ships. See spec open item 3.
  */
-export function SocialButton({ provider, onPress, disabled = false }: SocialButtonProps) {
+export function SocialButton({ provider, onPress, disabled = false, label: customLabel }: SocialButtonProps) {
   const { label, icon } = PROVIDER[provider]
   const { theme } = useUnistyles()
 
@@ -42,14 +41,15 @@ export function SocialButton({ provider, onPress, disabled = false }: SocialButt
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel={`Continue with ${label}`}
+      accessibilityLabel={customLabel ?? `Continue with ${label}`}
       accessibilityState={{ disabled }}
       style={styles.button}
     >
       <View style={styles.content}>
-        <AntDesign name={icon} size={20} color={theme.colors.text.heading} />
+        {provider === 'google' ? <Image source={{ uri: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg' }} style={{ width: 20, height: 20 }} accessible={false} />
+          : <AntDesign name={icon} size={20} color={theme.colors.text.heading} />}
         <Text variant="labelStrong" tone="heading">
-          {label}
+          {customLabel ?? label}
         </Text>
       </View>
     </Pressable>
@@ -60,6 +60,7 @@ const styles = StyleSheet.create((theme) => ({
   button: {
     flex: 1,
     height: theme.control.height,
+    minHeight: theme.control.height,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: theme.radii.pill,

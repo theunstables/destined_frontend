@@ -1,4 +1,4 @@
-export type MessageKind = 'text' | 'photo' | 'voice' | 'video'
+export type MessageKind = 'text' | 'photo' | 'voice' | 'video' | 'note' | 'location'
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed'
 
 export type Reaction = { emoji: string; authorId: string }

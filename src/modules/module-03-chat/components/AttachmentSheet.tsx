@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons'
-import { Pressable, View } from 'react-native'
+import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
@@ -15,6 +15,8 @@ type Props = {
   onVoiceNote: () => void
   /** Navigates to the Memories module (`/(app)/memories`) and closes this sheet. */
   onMemory: () => void
+  onLocation?: () => void
+  onNote?: () => void
   onClose: () => void
 }
 
@@ -39,6 +41,8 @@ export function AttachmentSheet({
   onCamera,
   onVoiceNote,
   onMemory,
+  onLocation,
+  onNote,
   onClose,
 }: Props) {
   // The sheet sits on the bottom edge, so its own padding has to clear the
@@ -46,6 +50,7 @@ export function AttachmentSheet({
   // under the system affordance on every gesture-nav device — the fixed
   // 342pt height hid the problem by never letting the content reach the edge.
   const insets = useSafeAreaInsets()
+  const { height } = useWindowDimensions()
   const { theme } = useUnistyles()
   // A sheet is the clearest case for motion in the app: it is a surface that
   // was not there a moment ago, and sliding it up from the edge it is
@@ -91,19 +96,21 @@ export function AttachmentSheet({
       onPress: onMemory,
       disabled: false,
     },
+    { label: 'Location', accessibilityLabel: 'Share current location', icon: 'map-pin', onPress: onLocation ?? onClose, disabled: !onLocation },
+    { label: 'Note', accessibilityLabel: 'Add note', icon: 'file-text', onPress: onNote ?? onClose, disabled: !onNote },
   ] as const
 
   return (
     <Animated.View
       entering={entrance.sheetIn}
       exiting={entrance.sheetOut}
-      style={[styles.sheet, { paddingBottom: insets.bottom + theme.spacing.xl }]}
+      style={[styles.sheet, { paddingBottom: insets.bottom + theme.spacing.xl, maxHeight: height * 0.85 }]}
     >
-      <View style={styles.grid}>
+      <ScrollView contentContainerStyle={styles.grid} keyboardShouldPersistTaps="handled">
         {tiles.map((tile) => (
           <Tile key={tile.label} {...tile} />
         ))}
-      </View>
+      </ScrollView>
     </Animated.View>
   )
 }

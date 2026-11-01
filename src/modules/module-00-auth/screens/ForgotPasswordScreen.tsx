@@ -99,6 +99,8 @@ export function ForgotPasswordScreen() {
             placeholder={COPY.emailPlaceholder}
             keyboardType="email-address"
             autoComplete="email"
+            onSubmitEditing={() => { if (!formState.isSubmitting) void send() }}
+            returnKeyType="send"
           />
         )}
 

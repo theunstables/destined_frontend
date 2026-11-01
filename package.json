@@ -68,6 +68,7 @@
     "lint": "expo lint",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:e2e": "npm --prefix e2e test",
     "typecheck": "tsc --noEmit"
   },
   "private": true

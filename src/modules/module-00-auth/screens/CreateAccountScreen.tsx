@@ -11,7 +11,6 @@ import { FormField } from '@/components/forms/FormField'
 import { CREATE_ACCOUNT_COPY as COPY } from '@/copy/createAccount'
 import { authErrorMessage } from '@/copy/errors'
 import { FooterPrompt } from '@/design-system/patterns/FooterPrompt'
-import { SocialButton } from '@/design-system/patterns/SocialButton'
 import { Button } from '@/design-system/primitives/Button'
 import { Divider } from '@/design-system/primitives/Divider'
 import { Text } from '@/design-system/primitives/Text'
@@ -21,6 +20,8 @@ import { AuthScreenLayout } from '@/modules/module-00-auth/components/AuthScreen
 import { PasswordRequirements } from '@/modules/module-00-auth/components/PasswordRequirements'
 import { signUpSchema, type SignUpValues } from '@/modules/module-00-auth/state/authSchemas'
 import { authService } from '@/services/auth'
+import { GoogleSignInButton } from '@/modules/module-00-auth/components/GoogleSignInButton'
+import { AppleSignInButton } from '@/modules/module-00-auth/components/AppleSignInButton'
 
 /**
  * M00-S03 — Create Account. Figma 522:154.
@@ -103,6 +104,8 @@ export function CreateAccountScreen() {
           placeholder={COPY.passwordPlaceholder}
           secure
           autoComplete="new-password"
+          onSubmitEditing={() => { if (!formState.isSubmitting) void submit() }}
+          returnKeyType="go"
         />
 
         <PasswordRequirements value={password} />
@@ -116,12 +119,9 @@ export function CreateAccountScreen() {
         <Divider label={COPY.dividerLabel} />
       </View>
 
-      {/* OAuth is out of scope (spec §17) — see `SignInScreen`'s matching
-          social row for why these carry `disabled` (and its dimmed wrapper)
-          instead of a live-looking `onPress={() => {}}` no-op. */}
-      <View style={[styles.social, styles.socialDisabled]}>
-        <SocialButton provider="google" onPress={() => {}} disabled />
-        <SocialButton provider="apple" onPress={() => {}} disabled />
+      <View style={styles.social}>
+        <GoogleSignInButton />
+        <AppleSignInButton />
       </View>
 
       <FooterPrompt text={COPY.footerText} linkLabel={COPY.footerLink} onPress={goToSignIn} />
@@ -146,10 +146,7 @@ const styles = StyleSheet.create((theme) => ({
     paddingVertical: theme.spacing.lg,
   },
   social: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: theme.spacing.md,
-  },
-  socialDisabled: {
-    opacity: 0.6,
   },
 }))

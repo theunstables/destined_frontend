@@ -41,6 +41,7 @@ import type {
  */
 
 type PlansState = {
+  revision?: number
   trip: Trip
   yearBoard: YearBoard
   promises: SharedPromise[]
@@ -59,6 +60,7 @@ type PlansState = {
   saving: boolean
   error: string | null
   hydrate: () => Promise<void>
+  waitForSave: () => Promise<PlansSnapshot | null>
 
   /* --- trips --- */
   selectDay: (number: number) => void
@@ -80,6 +82,8 @@ type PlansState = {
 
   /* --- year board --- */
   cycleTile: (tileId: string) => void
+  saveTile: (input: { id?: string; title: string; note: string }) => Promise<boolean>
+  removeTile: (tileId: string) => void
 
   /* --- lifetime --- */
   togglePromiseLived: (promiseId: string) => void
@@ -87,7 +91,7 @@ type PlansState = {
 
   /* --- capsules --- */
   sealCapsule: (draft: CapsuleDraft) => Capsule
-  openCapsule: (capsuleId: string) => 'opened' | 'not-due' | 'not-found'
+  openCapsule: (capsuleId: string) => Promise<'opened' | 'not-due' | 'not-found' | 'failed'>
 
   /* --- letters --- */
   sealLetter: (draft: LetterDraft) => Letter
@@ -114,6 +118,7 @@ const emptyYearBoard: YearBoard = {
 }
 
 const seed = () => ({
+  revision: undefined as number | undefined,
   trip: structuredClone(isMockMode ? SAMPLE_TRIP : emptyTrip),
   yearBoard: structuredClone(isMockMode ? SAMPLE_YEAR_BOARD : emptyYearBoard),
   promises: structuredClone(isMockMode ? SAMPLE_LIFETIME.promises : []),
@@ -130,6 +135,7 @@ const seed = () => ({
 })
 
 const snapshot = (state: PlansState): PlansSnapshot => ({
+  revision: state.revision,
   trip: state.trip,
   yearBoard: state.yearBoard,
   promises: state.promises,
@@ -141,21 +147,28 @@ const snapshot = (state: PlansState): PlansSnapshot => ({
   minutesRemaining: state.minutesRemaining,
 })
 
-let saveQueue = Promise.resolve()
+let saveQueue: Promise<PlansSnapshot | null> = Promise.resolve(null)
 let saveRevision = 0
+let storeGeneration = 0
 const queueSave = (get: () => PlansState) => {
   const revision = ++saveRevision
+  const generation = storeGeneration
   saveQueue = saveQueue.then(async () => {
+    if (generation !== storeGeneration) return null
     const value = structuredClone(snapshot(get()))
     usePlansStore.setState({ saving: true, error: null })
-    const result = await plansService.replace(value)
-    if (revision !== saveRevision) return
-    if (result.ok) {
-      usePlansStore.setState({ ...result.value, saving: false, error: null })
-    } else {
-      usePlansStore.setState({ saving: false, error: 'Your plans could not be saved. Try again.' })
+    const result = await plansService.replace(value).catch(() => null)
+    if (generation !== storeGeneration) return null
+    if (result?.ok) {
+      usePlansStore.setState(revision === saveRevision
+        ? { ...result.value, saving: false, error: null }
+        : { revision: result.value.revision })
+      return result.value
     }
+    if (revision === saveRevision) usePlansStore.setState({ saving: false, error: 'Changes were not saved. Reload saved plans before trying again.' })
+    return null
   })
+  return saveQueue
 }
 
 /**
@@ -173,9 +186,12 @@ const NEXT_TILE_STATE: Record<BingoTileState, BingoTileState> = {
 
 export const usePlansStore = create<PlansState>((set, get) => ({
   ...seed(),
+  waitForSave: () => saveQueue,
 
   hydrate: async () => {
+    const generation = storeGeneration
     const result = await plansService.get()
+    if (generation !== storeGeneration) return
     if (!result.ok) {
       set({ hydrated: true, error: 'Your plans could not be loaded.' })
       return
@@ -239,6 +255,26 @@ export const usePlansStore = create<PlansState>((set, get) => ({
     queueSave(get)
   },
 
+  saveTile: async ({ id, title, note }) => {
+    if (!title.trim() || title.trim().length > 140 || note.length > 1000
+      || (!id && get().yearBoard.tiles.length >= 25)
+      || (id && !get().yearBoard.tiles.some((tile) => tile.id === id))) return false
+    set((state) => ({
+      yearBoard: {
+        ...state.yearBoard,
+        tiles: id
+          ? state.yearBoard.tiles.map((tile) => tile.id === id ? { ...tile, title: title.trim(), note: note.trim() || null } : tile)
+          : [...state.yearBoard.tiles, { id: `tile-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`, number: state.yearBoard.tiles.length + 1, title: title.trim(), note: note.trim() || null, state: 'todo' as const }],
+      },
+    }))
+    return (await queueSave(get)) !== null
+  },
+
+  removeTile: (tileId) => {
+    set((state) => ({ yearBoard: { ...state.yearBoard, tiles: state.yearBoard.tiles.filter((tile) => tile.id !== tileId).map((tile, index) => ({ ...tile, number: index + 1 })) } }))
+    queueSave(get)
+  },
+
   togglePromiseLived: (promiseId) => {
     set((state) => ({
       promises: state.promises.map((promise) =>
@@ -268,15 +304,16 @@ export const usePlansStore = create<PlansState>((set, get) => ({
 
   sealCapsule: (draft) => {
     const capsule: Capsule = {
-      id: `cap-${get().capsules.length + 1}`,
-      title: 'A capsule for us',
+      id: `cap-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      title: draft.title?.trim() || 'A capsule for us',
       createdAt: new Date().toISOString().slice(0, 10),
       opensAt: draft.opensAt,
-      sealedBy: 'both',
+      sealedBy: 'me',
       sealNote: draft.sealNote.trim() || null,
       contents: Object.fromEntries(draft.kinds.map((kind) => [kind, 1])),
       vaultCode: `TOT-${draft.opensAt.slice(0, 4)}-CS`,
       opened: false,
+      payload: draft.payload,
     }
 
     set((state) => ({ capsules: [capsule, ...state.capsules] }))
@@ -285,7 +322,8 @@ export const usePlansStore = create<PlansState>((set, get) => ({
     return capsule
   },
 
-  openCapsule: (capsuleId) => {
+  openCapsule: async (capsuleId) => {
+    const generation = storeGeneration
     const capsule = get().capsules.find((item) => item.id === capsuleId)
     if (!capsule) return 'not-found'
     if (capsule.opened) return 'opened'
@@ -293,12 +331,13 @@ export const usePlansStore = create<PlansState>((set, get) => ({
     const today = new Date().toISOString().slice(0, 10)
     if (capsule.opensAt > today) return 'not-due'
 
-    set((state) => ({
-      capsules: state.capsules.map((item) =>
-        item.id === capsuleId ? { ...item, opened: true } : item,
-      ),
-    }))
-    queueSave(get)
+    await saveQueue
+    if (generation !== storeGeneration) return 'failed'
+    const state = snapshot(get())
+    const result = await plansService.replace({ ...state, capsules: state.capsules.map((item) => item.id === capsuleId ? { ...item, opened: true } : item) })
+      .catch(() => null)
+    if (generation !== storeGeneration || !result?.ok) return 'failed'
+    set(result.value)
     return 'opened'
   },
 
@@ -306,7 +345,7 @@ export const usePlansStore = create<PlansState>((set, get) => ({
     const letters = get().letters
     const letter: Letter = {
       id: `l-${String(letters.length + 1).padStart(3, '0')}`,
-      number: Math.max(...letters.map((l) => l.number)) + 1,
+      number: Math.max(0, ...letters.map((l) => l.number)) + 1,
       title: draft.title.trim(),
       from: 'me',
       to: draft.to,
@@ -350,7 +389,12 @@ export const usePlansStore = create<PlansState>((set, get) => ({
     queueSave(get)
   },
 
-  reset: () => set({ ...seed() }),
+  reset: () => {
+    storeGeneration += 1
+    saveRevision += 1
+    saveQueue = Promise.resolve(null)
+    set({ ...seed() })
+  },
 }))
 
 /* ------------------------------------------------------------------ *

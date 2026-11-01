@@ -1,0 +1,47 @@
+name: Live browser regression tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Deployed site or preview URL to test
+        required: true
+        default: https://www.talesoftwo.world
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-browser-tests
+  cancel-in-progress: false
+
+jobs:
+  browser-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: e2e
+    env:
+      E2E_BASE_URL: ${{ inputs.base_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install isolated browser test dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium webkit msedge
+      - name: Run live regression suite
+        run: npm test
+      - name: Preserve failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-browser-results
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 14

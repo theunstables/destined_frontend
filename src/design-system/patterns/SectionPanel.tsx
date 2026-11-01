@@ -3,6 +3,7 @@ import { View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { Text } from '@/design-system/primitives/Text'
+import { ScrollReveal } from '@/design-system/patterns/ScrollReveal'
 
 type SectionPanelProps = {
   title: string
@@ -24,9 +25,11 @@ type SectionPanelProps = {
 export function SectionPanel({ title, children }: SectionPanelProps) {
   return (
     <View style={styles.panel}>
-      <Text variant="h3" tone="heading">
-        {title}
-      </Text>
+      <ScrollReveal effect="fade">
+        <Text variant="h3" tone="heading">
+          {title}
+        </Text>
+      </ScrollReveal>
 
       <View style={styles.rows}>{children}</View>
     </View>

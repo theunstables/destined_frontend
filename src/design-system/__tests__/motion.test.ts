@@ -77,7 +77,7 @@ describe('reduced motion', () => {
 
     // Rather than parse, assert the invariant: every animation builder is
     // matched by exactly one `.reduceMotion(` call.
-    const builders = src.match(/(FadeIn|FadeOut|FadeInDown|SlideInDown|SlideOutDown)\.duration\(/g) ?? []
+    const builders = src.match(/(FadeIn|FadeOut|FadeInDown|SlideInDown|SlideOutDown|ZoomIn)\.duration\(/g) ?? []
     const guards = src.match(/\.reduceMotion\(/g) ?? []
 
     expect(builders.length).toBeGreaterThan(0)

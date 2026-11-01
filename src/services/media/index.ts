@@ -1,3 +1,4 @@
+import { Platform } from 'react-native'
 import { createExpoMediaService } from '@/services/media/expoMedia'
 import { request } from '@/services/http/client'
 import { usePreferencesStore } from '@/state/preferencesStore'
@@ -94,11 +95,19 @@ export async function uploadMedia(localUri: string): Promise<UploadedMedia> {
    * runtime. The name is a placeholder: the server discards client filenames
    * and stores a random one, so nothing depends on this value.
    */
-  form.append('file', {
-    uri: localUri,
-    name: `upload.${localUri.split('?')[0]?.split('.').pop() ?? 'bin'}`,
-    type: guessContentType(localUri),
-  } as unknown as Blob)
+  if (Platform.OS === 'web') {
+    const response = await fetch(localUri)
+    if (!response.ok) throw new Error('The selected file could not be read.')
+    const file = await response.blob()
+    const upload = file.type ? file : new Blob([file], { type: guessContentType(localUri) })
+    form.append('file', upload, 'upload')
+  } else {
+    form.append('file', {
+      uri: localUri,
+      name: `upload.${localUri.split('?')[0]?.split('.').pop() ?? 'bin'}`,
+      type: guessContentType(localUri),
+    } as unknown as Blob)
+  }
 
   // Uploads are slower than JSON calls; the default 15s timeout would clip them.
   const response = await request<UploadedMedia>('/media', {

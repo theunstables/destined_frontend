@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
-import { Pressable, View } from 'react-native'
+import { Pressable } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { StyleSheet } from 'react-native-unistyles'
+import { useEntrance } from '@/design-system/patterns/useEntrance'
 
 type Props = {
   /** Tapping the backdrop, anywhere the content is not. */
@@ -36,9 +38,10 @@ type Props = {
  */
 export function Overlay({ onDismiss, dismissLabel, align = 'centre', children }: Props) {
   styles.useVariants({ align })
+  const entrance = useEntrance()
 
   return (
-    <View style={styles.layer}>
+    <Animated.View style={styles.layer} entering={entrance.fade} exiting={entrance.fadeOut}>
       <Pressable
         style={styles.backdrop}
         onPress={onDismiss}
@@ -56,10 +59,10 @@ export function Overlay({ onDismiss, dismissLabel, align = 'centre', children }:
           still passes (measured in the browser, not assumed). The prop is
           the only form that reaches CSS here. Revisit when react-native-web
           maps the style property. */}
-      <View style={styles.content} pointerEvents="box-none">
+      <Animated.View style={styles.content} pointerEvents="box-none" entering={align === 'centre' ? entrance.pop : undefined}>
         {children}
-      </View>
-    </View>
+      </Animated.View>
+    </Animated.View>
   )
 }
 

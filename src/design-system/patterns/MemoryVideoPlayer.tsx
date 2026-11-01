@@ -1,5 +1,6 @@
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { StyleSheet } from 'react-native-unistyles'
+import { usePrivateMediaUri } from '@/hooks/usePrivateMediaUri'
 
 type Props = {
   uri: string
@@ -12,7 +13,8 @@ type Props = {
  * volume) come from the platform rather than being drawn by hand.
  */
 export function MemoryVideoPlayer({ uri, testID }: Props) {
-  const player = useVideoPlayer(uri, (instance) => {
+  const resolved = usePrivateMediaUri(uri)
+  const player = useVideoPlayer(resolved ?? null, (instance) => {
     // Not auto-played — a video that starts on its own inside a memory feed
     // would play over whatever else is open on the screen.
     instance.loop = false

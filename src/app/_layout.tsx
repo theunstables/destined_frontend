@@ -9,16 +9,18 @@ import {
     PlusJakartaSans_700Bold,
     useFonts,
 } from '@expo-google-fonts/plus-jakarta-sans'
-import { Stack } from 'expo-router'
+import { Stack, usePathname } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { useEffect } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Platform, Pressable, Text, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { useStackScreenOptions } from '@/design-system/patterns/useStackScreenOptions'
 import { useServerStateHydration } from '@/hooks/useServerStateHydration'
 import { useAppBootstrapStore, type AppBootstrapState } from '@/state/appBootstrapStore'
+import { GoogleCallbackScreen } from '@/modules/module-00-auth/screens/GoogleCallbackScreen'
+import { AppleCallbackScreen } from '@/modules/module-00-auth/screens/AppleCallbackScreen'
 
 /**
  * Root layout.
@@ -34,6 +36,13 @@ import { useAppBootstrapStore, type AppBootstrapState } from '@/state/appBootstr
 SplashScreen.preventAutoHideAsync()
 
 export default function RootLayout() {
+  const path = usePathname()
+  if (Platform.OS === 'web' && path === '/google-callback') return <GoogleCallbackScreen />
+  if (Platform.OS === 'web' && path === '/apple-callback') return <AppleCallbackScreen />
+  return <AppRootLayout />
+}
+
+function AppRootLayout() {
   // Called before the early `return null` below so hook order stays stable
   // across the fonts-loading render and every render after it.
   const screenOptions = useStackScreenOptions()

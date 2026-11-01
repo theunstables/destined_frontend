@@ -1,12 +1,15 @@
 import { Feather } from '@expo/vector-icons'
-import { useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { Pressable, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { YEAR_COPY } from '@/copy/yearTogether'
 import { AppScreenLayout } from '@/design-system/patterns/AppScreenLayout'
+import { ScrollReveal } from '@/design-system/patterns/ScrollReveal'
 import { Text } from '@/design-system/primitives/Text'
+import { Input } from '@/design-system/primitives/Input'
+import { Button } from '@/design-system/primitives/Button'
+import { useBackTo } from '@/hooks/useBackTo'
 import { Chip } from '@/modules/module-06-plans/components/Chip'
 import { ProgressBar } from '@/modules/module-06-plans/components/ProgressBar'
 import { ScreenIntro } from '@/modules/module-06-plans/components/ScreenIntro'
@@ -31,13 +34,28 @@ type Filter = 'all' | 'done' | 'in-progress'
  * lines. Two columns keeps the content the frame put in the tile.
  */
 export function YearTogetherScreen() {
-  const router = useRouter()
+  const onBack = useBackTo('/(app)/plans')
   const { theme } = useUnistyles()
 
   const board = usePlansStore((state) => state.yearBoard)
   const cycleTile = usePlansStore((state) => state.cycleTile)
   const stamped = usePlansStore(selectTilesStamped)
   const inProgress = usePlansStore(selectTilesInProgress)
+  const saveTile = usePlansStore((state) => state.saveTile)
+  const removeTile = usePlansStore((state) => state.removeTile)
+  const saving = usePlansStore((state) => state.saving)
+  const saveError = usePlansStore((state) => state.error)
+  const hydrate = usePlansStore((state) => state.hydrate)
+  const [editor, setEditor] = useState<{ id?: string; title: string; note: string } | null>(null)
+  const [editorError, setEditorError] = useState<string | null>(null)
+  const [today] = useState(() => Date.now())
+
+  const save = async () => {
+    if (!editor || saving) return
+    setEditorError(null)
+    if (await saveTile(editor)) setEditor(null)
+    else setEditorError(usePlansStore.getState().error ?? 'A card needs a title up to 140 characters and a note up to 1,000 characters. Up to 25 cards can be saved.')
+  }
 
   const [filter, setFilter] = useState<Filter>('all')
 
@@ -52,7 +70,7 @@ export function YearTogetherScreen() {
   }, [board.tiles, filter])
 
   return (
-    <AppScreenLayout activeTab="plans" onBack={() => router.back()}>
+    <AppScreenLayout activeTab="plans" onBack={onBack}>
       <ScreenIntro
         chip={YEAR_COPY.eyebrow}
         chipIcon="grid"
@@ -60,6 +78,23 @@ export function YearTogetherScreen() {
         lede={YEAR_COPY.lede}
         aside={String(board.year)}
       />
+
+      {saveError ? (
+        <View style={{ gap: theme.spacing.sm }}>
+          <Text variant="footnote" tone="error" accessibilityRole="alert">{saveError}</Text>
+          <Button label="Reload saved plans" variant="outline" onPress={() => { void hydrate() }} />
+        </View>
+      ) : null}
+      {saving ? <Text variant="footnote" tone="placeholder" accessibilityLiveRegion="polite">Saving...</Text> : null}
+      {editor ? (
+        <View style={{ gap: theme.spacing.md }}>
+          <Input label="Card title" value={editor.title} onChangeText={(title) => setEditor({ ...editor, title })} maxLength={140} onSubmitEditing={() => { void save() }} returnKeyType="done" />
+          <Input label="Card note" value={editor.note} onChangeText={(note) => setEditor({ ...editor, note })} maxLength={1000} multiline />
+          {editorError ? <Text variant="footnote" tone="error" accessibilityRole="alert">{editorError}</Text> : null}
+          <Button label={editor.id ? 'Save card' : 'Add card'} onPress={() => { void save() }} loading={saving} />
+          <Button label="Cancel" variant="outline" onPress={() => { setEditor(null); setEditorError(null) }} disabled={saving} />
+        </View>
+      ) : null}
 
       <View style={styles.panel}>
         <ProgressBar
@@ -80,7 +115,7 @@ export function YearTogetherScreen() {
             </Text>
 
             <Text variant="labelStrong" tone="brand">
-              {board.daysRemaining}
+              {Math.max(0, Math.ceil((Date.UTC(board.year + 1, 0, 1) - today) / 86_400_000))}
             </Text>
           </View>
         </View>
@@ -108,7 +143,7 @@ export function YearTogetherScreen() {
           onPress={() => setFilter('in-progress')}
         />
 
-        <Chip label={YEAR_COPY.addTile} icon="plus" tone="brand" />
+        {total < 25 && !editor && !saving ? <Chip label={YEAR_COPY.addTile} icon="plus" tone="brand" onPress={() => { setEditor({ title: '', note: '' }); setEditorError(null) }} /> : null}
       </View>
 
       {visible.length === 0 ? (
@@ -119,8 +154,18 @@ export function YearTogetherScreen() {
         </View>
       ) : (
         <View style={styles.grid}>
-          {visible.map((tile) => (
-            <TileCard key={tile.id} tile={tile} onPress={() => cycleTile(tile.id)} />
+          {visible.map((tile, index) => (
+            <ScrollReveal key={tile.id} effect="flip" delay={(index % 2) * 50} style={styles.tileGroup}>
+              <TileCard tile={tile} onPress={() => cycleTile(tile.id)} />
+              <View style={styles.cardActions}>
+                <Pressable disabled={saving} onPress={() => { setEditor({ id: tile.id, title: tile.title, note: tile.note ?? '' }); setEditorError(null) }} accessibilityRole="button" accessibilityLabel={`Edit ${tile.title}`} style={styles.iconButton}>
+                  <Feather name="edit-2" size={18} color={theme.colors.brand.primary} />
+                </Pressable>
+                <Pressable disabled={saving} onPress={() => removeTile(tile.id)} accessibilityRole="button" accessibilityLabel={`Remove ${tile.title}`} style={styles.iconButton}>
+                  <Feather name="trash-2" size={18} color={theme.colors.feedback.error} />
+                </Pressable>
+              </View>
+            </ScrollReveal>
           ))}
         </View>
       )}
@@ -217,8 +262,6 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.spacing.md,
   },
   tile: {
-    flexGrow: 1,
-    flexBasis: '47%',
     minWidth: 0,
     minHeight: 120,
     gap: theme.spacing.xs,
@@ -250,6 +293,9 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  tileGroup: { flexGrow: 1, flexBasis: '47%', minWidth: 0 },
+  cardActions: { flexDirection: 'row', justifyContent: 'flex-end' },
+  iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   empty: {
     padding: theme.spacing.xxl,
     borderRadius: theme.radii.tile,

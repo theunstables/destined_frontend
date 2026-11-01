@@ -19,6 +19,8 @@ type ChatState = {
   send(body: string): Promise<void>
   sendPhoto(uri: string, caption?: string): Promise<void>
   sendVoice(uri: string, durationMs: number): Promise<void>
+  sendNote(body: string): Promise<void>
+  sendLocation(uri: string, label: string): Promise<void>
   retry(id: string): Promise<void>
   startReply(id: string): void
   cancelReply(): void
@@ -114,7 +116,7 @@ function memoryFromMessage(message: Message): NewMemory {
     title,
     date: message.sentAt.slice(0, 10),
     note: message.body,
-    photoUri: message.mediaUri,
+    photoUri: message.kind === 'photo' ? message.mediaUri : undefined,
     tags: ['Little Things'],
   }
 }
@@ -130,7 +132,7 @@ export const useChatStore = create<ChatState>((set, get) => {
    */
   const settle = async (tempId: string, input: SendInput) => {
     try {
-      const sent = await chatService.sendMessage(input)
+      const sent = await chatService.sendMessage({ ...input, clientId: input.clientId ?? tempId })
       set({ messages: get().messages.map((m) => (m.id === tempId ? sent : m)) })
     } catch {
       set({
@@ -140,8 +142,25 @@ export const useChatStore = create<ChatState>((set, get) => {
     }
   }
 
+  const sendAttachment = async (kind: 'note' | 'location', body: string, mediaUri?: string) => {
+    const tempId = nextTempId()
+    const input: SendInput = { kind, body, mediaUri, clientId: tempId, replyToId: get().replyTarget ?? undefined }
+    const optimistic: Message = { ...input, id: tempId, authorId: 'me', reactions: [], pinned: false, sentAt: new Date().toISOString(), status: 'sending' }
+    set({ replyTarget: null, attachmentSheetOpen: false, messages: [...get().messages, optimistic] })
+    await settle(tempId, input)
+  }
+
   return {
     ...EMPTY,
+
+    async sendNote(body) {
+      if (!body.trim() || body.length > 4000) return
+      await sendAttachment('note', body.trim())
+    },
+
+    async sendLocation(uri, label) {
+      await sendAttachment('location', label, uri)
+    },
 
     async load() {
       // Claim the subscription slot, and subscribe if it is still empty,
@@ -269,6 +288,7 @@ export const useChatStore = create<ChatState>((set, get) => {
       })
 
       await settle(id, {
+        clientId: message.clientId ?? id,
         kind: message.kind,
         body: message.body,
         mediaUri: message.mediaUri,

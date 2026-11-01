@@ -44,7 +44,7 @@ export const PLANS_COPY = {
   cards: {
     year: {
       chip: 'Active Board',
-      title: 'Our Year Together',
+      title: 'Bingo Cards Planner',
       lede: (year: number) => `Couple Bingo ${year}`,
       status: (done: number, total: number) => `${done} of ${total} stamped`,
     },

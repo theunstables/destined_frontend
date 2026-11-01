@@ -44,6 +44,9 @@ type InputProps = {
   autoCapitalize?: TextInputProps['autoCapitalize']
   editable?: boolean
   onBlur?: () => void
+  onSubmitEditing?: TextInputProps['onSubmitEditing']
+  returnKeyType?: TextInputProps['returnKeyType']
+  maxLength?: number
   /**
    * Grows the field into a note-sized box for free text — M01-S13's memory and
    * M01-S14's note.
@@ -84,6 +87,9 @@ export function Input({
   autoCapitalize = 'none',
   editable = true,
   onBlur,
+  onSubmitEditing,
+  returnKeyType,
+  maxLength,
   multiline = false,
 }: InputProps) {
   const [isFocused, setIsFocused] = useState(false)
@@ -119,6 +125,9 @@ export function Input({
           onChangeText={onChangeText}
           onFocus={handleFocus}
           onBlur={handleBlur}
+          onSubmitEditing={onSubmitEditing}
+          returnKeyType={returnKeyType}
+          maxLength={maxLength}
           placeholder={placeholder}
           placeholderTextColor={theme.colors.text.placeholder}
           secureTextEntry={secure && !isRevealed}

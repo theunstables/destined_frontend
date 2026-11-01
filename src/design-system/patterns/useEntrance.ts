@@ -6,6 +6,7 @@ import {
   ReduceMotion,
   SlideInDown,
   SlideOutDown,
+  ZoomIn,
 } from 'react-native-reanimated'
 import { useUnistyles } from 'react-native-unistyles'
 
@@ -56,6 +57,8 @@ export function useEntrance() {
     /** Content that simply becomes present — a banner, a badge. */
     fade: FadeIn.duration(duration.base).easing(decelerate).reduceMotion(motionPreference),
     fadeOut: FadeOut.duration(duration.fast).easing(accelerate).reduceMotion(motionPreference),
+    pop: ZoomIn.duration(duration.base).easing(decelerate)
+      .withInitialValues({ transform: [{ scale: 0.96 }] }).reduceMotion(motionPreference),
     /**
      * Content that arrives from just below where it lands — a context menu, a
      * reply strip. The short travel is the point: it reads as the element

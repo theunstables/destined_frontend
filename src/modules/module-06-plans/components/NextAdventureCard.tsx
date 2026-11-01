@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons'
-import { Image } from 'expo-image'
+import { Image } from '@/design-system/primitives/PrivateImage'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { View } from 'react-native'
@@ -7,6 +7,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { PLANS_COPY } from '@/copy/plans'
 import { PressableScale } from '@/design-system/patterns/PressableScale'
+import { ScrollReveal } from '@/design-system/patterns/ScrollReveal'
 import { Text } from '@/design-system/primitives/Text'
 import {
   selectPlannedMoments,
@@ -57,6 +58,7 @@ export function NextAdventureCard() {
   const hasPlan = planned > 0
 
   return (
+    <ScrollReveal effect="zoom">
     <PressableScale
       onPress={() => router.push(hasPlan ? '/(app)/plans' : '/(app)/plans/trip/new')}
       accessibilityLabel={
@@ -138,6 +140,7 @@ export function NextAdventureCard() {
         </View>
       </View>
     </PressableScale>
+    </ScrollReveal>
   )
 }
 

@@ -1,4 +1,5 @@
-import { render, screen, userEvent } from '@testing-library/react-native'
+import { useState } from 'react'
+import { fireEvent, render, screen, userEvent } from '@testing-library/react-native'
 
 import { DateField, isValidBirthday } from '@/design-system/primitives/DateField'
 
@@ -27,6 +28,11 @@ describe('isValidBirthday', () => {
 })
 
 describe('DateField', () => {
+  function ControlledDate() {
+    const [value, setValue] = useState('2002-01-01')
+    return <DateField label="Birthday" value={value} onChangeText={setValue} />
+  }
+
   async function type(label: string, text: string) {
     await userEvent.type(screen.getByLabelText(label), text)
   }
@@ -40,6 +46,37 @@ describe('DateField', () => {
 
     // The year is still missing, so there is no date to report yet.
     expect(onChangeText).not.toHaveBeenCalledWith(expect.stringMatching(/^\d{4}-/))
+  })
+
+  it('preserves the other segments when backspacing a controlled date', async () => {
+    await render(<ControlledDate />)
+
+    await fireEvent.changeText(screen.getByLabelText('Birthday year'), '200')
+
+    expect(screen.getByLabelText('Birthday month').props.value).toBe('01')
+    expect(screen.getByLabelText('Birthday day').props.value).toBe('01')
+    expect(screen.getByLabelText('Birthday year').props.value).toBe('200')
+
+    await fireEvent.changeText(screen.getByLabelText('Birthday year'), '2003')
+    expect(screen.getByLabelText('Birthday month').props.value).toBe('01')
+    expect(screen.getByLabelText('Birthday day').props.value).toBe('01')
+    expect(screen.getByLabelText('Birthday year').props.value).toBe('2003')
+  })
+
+  it('accepts external replacement and clearing of a complete date', async () => {
+    const onChangeText = jest.fn()
+    const { rerender } = await render(<DateField label="Birthday" value="2002-01-01" onChangeText={onChangeText} />)
+
+    await rerender(<DateField label="Birthday" value="1994-07-21" onChangeText={onChangeText} />)
+    expect(screen.getByLabelText('Birthday month').props.value).toBe('07')
+    expect(screen.getByLabelText('Birthday day').props.value).toBe('21')
+    expect(screen.getByLabelText('Birthday year').props.value).toBe('1994')
+
+    await rerender(<DateField label="Birthday" value="" onChangeText={onChangeText} />)
+    expect(screen.getByLabelText('Birthday month').props.value).toBe('')
+    expect(screen.getByLabelText('Birthday day').props.value).toBe('')
+    expect(screen.getByLabelText('Birthday year').props.value).toBe('')
+    expect(onChangeText).not.toHaveBeenCalled()
   })
 
   it('emits a complete but impossible date rather than swallowing it', async () => {
