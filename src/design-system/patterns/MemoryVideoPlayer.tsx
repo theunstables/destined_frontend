@@ -24,8 +24,6 @@ export function MemoryVideoPlayer({ uri, testID }: Props) {
     <VideoView
       style={styles.video}
       player={player}
-      allowsFullscreen
-      allowsPictureInPicture
       testID={testID}
     />
   )

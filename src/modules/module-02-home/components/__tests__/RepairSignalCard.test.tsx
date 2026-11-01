@@ -70,7 +70,7 @@ describe('RepairSignalCard', () => {
     useRepairSignalStore.setState({ signal: null, hydrated: true, loading: true })
     await renderScreen(<RepairSignalCard />)
 
-    expect(screen.getByRole('button', { name: COPY.send })).toHaveAccessibilityState({
+    expect(screen.getByRole('button', { name: COPY.send }).props.accessibilityState).toMatchObject({
       busy: true,
       disabled: true,
     })
@@ -78,7 +78,10 @@ describe('RepairSignalCard', () => {
 
   it('does not send twice while the first action is unresolved', async () => {
     let resolveSend: (() => void) | undefined
-    const send = jest.fn(() => new Promise<void>((resolve) => { resolveSend = resolve }))
+    const send = jest.fn(async () => {
+      await new Promise<void>((resolve) => { resolveSend = resolve })
+      return true
+    })
     useRepairSignalStore.setState({ signal: null, hydrated: true, send })
     const user = userEvent.setup()
     await renderScreen(<RepairSignalCard />)

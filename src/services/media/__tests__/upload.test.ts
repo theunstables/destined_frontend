@@ -14,14 +14,14 @@ beforeEach(() => {
   jest.clearAllMocks()
   Object.assign(Platform, { OS: 'web' })
   jest.mocked(request).mockResolvedValue({ data: uploaded, meta: {} })
-  jest.spyOn(global, 'FormData').mockImplementation(() => ({ append }) as unknown as FormData)
+  jest.spyOn(globalThis, 'FormData').mockImplementation(() => ({ append }) as unknown as FormData)
 })
 
 afterEach(() => jest.restoreAllMocks())
 
 it('uploads a real browser blob and preserves the backend signed URL', async () => {
   const file = { type: 'image/png' } as Blob
-  jest.spyOn(global, 'fetch').mockResolvedValue({ ok: true, blob: async () => file } as Response)
+  jest.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, blob: async () => file } as Response)
   expect(await uploadMedia('blob:https://example.test/picked-file')).toEqual(uploaded)
   expect(append).toHaveBeenCalledWith('file', file, 'upload')
   expect(request).toHaveBeenCalledWith('/media', expect.objectContaining({ method: 'POST', timeoutMs: 120_000 }))
@@ -33,7 +33,7 @@ it('does not upload or replace an existing signed backend URL', async () => {
 })
 
 it('does not send an unreadable browser file', async () => {
-  jest.spyOn(global, 'fetch').mockResolvedValue({ ok: false } as Response)
+  jest.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false } as Response)
   await expect(uploadMedia('blob:https://example.test/missing-file')).rejects.toThrow('could not be read')
   expect(request).not.toHaveBeenCalled()
 })

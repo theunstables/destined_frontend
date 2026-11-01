@@ -26,6 +26,7 @@ export type TextTone =
   | 'brand'
   | 'link'
   | 'error'
+  | 'danger'
   | 'success'
   | 'onPrimary'
   /**
@@ -118,6 +119,7 @@ const styles = StyleSheet.create((theme) => ({
         brand: { color: theme.colors.brand.primary },
         link: { color: theme.colors.brand.link },
         error: { color: theme.colors.feedback.error },
+        danger: { color: theme.colors.feedback.error },
         success: { color: theme.colors.feedback.success },
         onPrimary: { color: theme.colors.text.onPrimary },
         onChat: { color: theme.colors.chat.bubbleInk },

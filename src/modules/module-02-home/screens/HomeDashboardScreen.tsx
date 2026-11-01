@@ -314,7 +314,7 @@ export function HomeDashboardScreen() {
            * "Our Note" (see `Memory.note`'s own comment); empty is common,
            * since most memories never get one.
            */}
-          {currentFeatured?.note ? (
+          {currentFeatured && 'note' in currentFeatured && currentFeatured.note ? (
             <Text variant="footnote" tone="body">
               {currentFeatured.note}
             </Text>

@@ -40,7 +40,7 @@ describe('HTTP client authentication modes', () => {
     mockGetAccessToken.mockReturnValue('existing-access-token')
     mockGetRefreshToken.mockReturnValue('existing-refresh-token')
     mockIsAccessTokenExpired.mockReturnValue(false)
-    global.fetch = jest.fn(async () => successResponse({ accepted: true }))
+    globalThis.fetch = jest.fn(async () => successResponse({ accepted: true }))
   })
 
   it('does not hydrate, refresh, or attach bearer credentials to a public POST', async () => {
@@ -48,7 +48,7 @@ describe('HTTP client authentication modes', () => {
 
     expect(mockHydrate).not.toHaveBeenCalled()
     expect(mockIsAccessTokenExpired).not.toHaveBeenCalled()
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(globalThis.fetch).toHaveBeenCalledWith(
       'http://localhost:4000/v1/auth/password/forgot',
       expect.objectContaining({
         method: 'POST',
@@ -64,7 +64,7 @@ describe('HTTP client authentication modes', () => {
     await post('/pairing/invites')
 
     expect(mockHydrate).toHaveBeenCalledTimes(1)
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(globalThis.fetch).toHaveBeenCalledWith(
       'http://localhost:4000/v1/pairing/invites',
       expect.objectContaining({
         method: 'POST',

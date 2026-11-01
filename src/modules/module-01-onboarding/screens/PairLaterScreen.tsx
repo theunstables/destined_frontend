@@ -38,7 +38,7 @@ export function PairLaterScreen() {
 
       <View style={styles.actions}>
         <FloatingInfoCard
-          icon="heart"
+          icon="check-circle"
           title={COPY.cardTitle}
           body={COPY.cardBody}
         />

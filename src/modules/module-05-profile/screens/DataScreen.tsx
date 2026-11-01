@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router'
-import { Image } from '@/design-system/primitives/PrivateImage'
+import { Image as ExpoImage } from 'expo-image'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { isMockMode } from '@/config/env'
@@ -75,7 +75,7 @@ export function DataScreen() {
   }, [])
 
   const clearCache = useCallback(async () => {
-    await Promise.all([Image.clearMemoryCache(), Image.clearDiskCache()])
+    await Promise.all([ExpoImage.clearMemoryCache(), ExpoImage.clearDiskCache()])
     if (isMockMode) {
       setStorage((current) => {
         const slices = current.slices.filter((slice) => slice.key !== 'cache')

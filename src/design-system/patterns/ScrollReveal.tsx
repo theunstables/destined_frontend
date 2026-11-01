@@ -11,6 +11,8 @@ type Watch = { node: Measurable; reveal: () => void }
 type Viewport = { observe: (watch: Watch) => () => void; check: () => void }
 const RevealViewport = createContext<Viewport | null>(null)
 const useClientLayoutEffect = Platform.OS === 'web' && typeof window !== 'undefined' ? useLayoutEffect : useEffect
+const hasMeasureInWindow = (value: unknown): value is Measurable =>
+  !!value && typeof value === 'object' && 'measureInWindow' in value && typeof (value as Measurable).measureInWindow === 'function'
 
 export function intersectsViewport(item: ViewportFrame, viewport: ViewportFrame): boolean {
   if ([item, viewport].some((frame) => ![frame.x, frame.y, frame.width, frame.height].every(Number.isFinite)
@@ -51,20 +53,20 @@ export function useRevealViewport(scroll: RefObject<ScrollView | null>): Viewpor
       frame.current = null
       if (!mounted.current) return
       const root = scroll.current?.getNativeScrollRef?.() ?? scroll.current
-      if (!root?.measureInWindow) {
+      if (!hasMeasureInWindow(root)) {
         for (const watch of watches.current) watch.reveal()
         watches.current.clear()
         return
       }
-      root.measureInWindow((x, y, width, height) => {
+      root.measureInWindow((x: number, y: number, width: number, height: number) => {
         if (!mounted.current || width <= 0 || height <= 0) return
         for (const watch of watches.current) {
-          if (typeof watch.node.measureInWindow !== 'function') {
+          if (!hasMeasureInWindow(watch.node)) {
             watches.current.delete(watch)
             watch.reveal()
             continue
           }
-          watch.node.measureInWindow((itemX, itemY, itemWidth, itemHeight) => {
+          watch.node.measureInWindow((itemX: number, itemY: number, itemWidth: number, itemHeight: number) => {
             if (!mounted.current || !watches.current.has(watch)) return
             if (intersectsViewport({ x: itemX, y: itemY, width: itemWidth, height: itemHeight }, { x, y, width, height })) {
               watches.current.delete(watch)
